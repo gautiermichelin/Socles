@@ -8,10 +8,22 @@
         </svg>
         <h1>SOCLES</h1>
       </div>
-      <button @click="handleLogout" class="logout-button">
-        Déconnexion
-      </button>
+      <div class="header-actions">
+        <button @click="openQRScanner" class="qr-button">
+          <img src="/qrcode.png" alt="QR code" />
+          QR code
+        </button>
+        <button @click="handleLogout" class="logout-button">
+          Déconnexion
+        </button>
+      </div>
     </header>
+
+    <QRScanner
+      v-if="showQRScanner"
+      @scan="handleQRScan"
+      @close="closeQRScanner"
+    />
     
     <div class="container">
       <div class="list-header">
@@ -87,14 +99,19 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { soclesDB, settingsDB } from '../services/db'
+import QRScanner from '../components/QRScanner.vue'
 
 export default {
   name: 'SoclesListView',
+  components: {
+    QRScanner
+  },
   setup() {
     const router = useRouter()
     const socles = ref([])
     const searchQuery = ref('')
     const loading = ref(true)
+    const showQRScanner = ref(false)
     
     // Load socles from database
     const loadSocles = async () => {
@@ -167,21 +184,53 @@ export default {
       await settingsDB.set('isAuthenticated', false)
       router.push({ name: 'Login' })
     }
-    
+
+    // QR Scanner functions
+    const openQRScanner = () => {
+      showQRScanner.value = true
+    }
+
+    const closeQRScanner = () => {
+      showQRScanner.value = false
+    }
+
+    const handleQRScan = async (scannedData) => {
+      try {
+        // Search for socle by inventory number
+        const foundSocle = socles.value.find(
+          socle => socle.inventoryNumber && socle.inventoryNumber.toLowerCase() === scannedData.toLowerCase()
+        )
+
+        if (foundSocle) {
+          // Redirect to the socle edit page
+          router.push({ name: 'SocleEdit', params: { id: foundSocle.id } })
+        } else {
+          alert(`Aucun socle trouvé avec le numéro: ${scannedData}`)
+        }
+      } catch (error) {
+        console.error('QR scan error:', error)
+        alert('Une erreur est survenue lors de la recherche')
+      }
+    }
+
     onMounted(() => {
       loadSocles()
     })
-    
+
     return {
       socles,
       searchQuery,
       loading,
       filteredSocles,
+      showQRScanner,
       formatDate,
       goToCreate,
       goToEdit,
       deleteSocle,
-      handleLogout
+      handleLogout,
+      openQRScanner,
+      closeQRScanner,
+      handleQRScan
     }
   }
 }
@@ -218,6 +267,36 @@ export default {
   font-size: 1.5rem;
   font-weight: 700;
   margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+.qr-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: white;
+  color: var(--color-text);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.9rem;
+}
+
+.qr-button:hover {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.qr-button img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .logout-button {

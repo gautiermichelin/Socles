@@ -5,17 +5,7 @@
         <img src="/logo_noir.svg" alt="Logo SOCLES" />
         <h1>SOCLES</h1>
       </div>
-      <button @click="openQRScanner" class="qr-button">
-        <img src="/qrcode.png" alt="QR code" />
-        QR code
-      </button>
     </div>
-
-    <QRScanner
-      v-if="showQRScanner"
-      @scan="handleQRScan"
-      @close="closeQRScanner"
-    />
 
     <div class="login-card">
       <div class="app-icon">
@@ -76,21 +66,16 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { usersDB, settingsDB, soclesDB, initDemoData } from '../services/db'
-import QRScanner from '../components/QRScanner.vue'
+import { usersDB, settingsDB, initDemoData } from '../services/db'
 
 export default {
   name: 'LoginView',
-  components: {
-    QRScanner
-  },
   setup() {
     const router = useRouter()
     const email = ref('')
     const password = ref('')
     const rememberEmail = ref(false)
     const errorMessage = ref('')
-    const showQRScanner = ref(false)
     
     // Load saved email on mount
     onMounted(async () => {
@@ -133,53 +118,12 @@ export default {
       }
     }
 
-    // QR Scanner functions
-    const openQRScanner = () => {
-      showQRScanner.value = true
-    }
-
-    const closeQRScanner = () => {
-      showQRScanner.value = false
-    }
-
-    const handleQRScan = async (scannedData) => {
-      try {
-        // Authenticate first if not authenticated
-        const isAuthenticated = await settingsDB.get('isAuthenticated')
-
-        if (!isAuthenticated) {
-          errorMessage.value = 'Veuillez vous connecter d\'abord'
-          return
-        }
-
-        // Search for socle by inventory number
-        const allSocles = await soclesDB.getAll()
-        const foundSocle = allSocles.find(
-          socle => socle.inventoryNumber && socle.inventoryNumber.toLowerCase() === scannedData.toLowerCase()
-        )
-
-        if (foundSocle) {
-          // Redirect to the socle edit page
-          router.push({ name: 'SocleEdit', params: { id: foundSocle.id } })
-        } else {
-          errorMessage.value = `Aucun socle trouvé avec le numéro: ${scannedData}`
-        }
-      } catch (error) {
-        console.error('QR scan error:', error)
-        errorMessage.value = 'Une erreur est survenue lors de la recherche'
-      }
-    }
-
     return {
       email,
       password,
       rememberEmail,
       errorMessage,
-      showQRScanner,
-      handleLogin,
-      openQRScanner,
-      closeQRScanner,
-      handleQRScan
+      handleLogin
     }
   }
 }
@@ -218,23 +162,6 @@ export default {
   font-size: 1.75rem;
   font-weight: 700;
   margin: 0;
-}
-
-.qr-button {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: white;
-  color: var(--color-text);
-  border-radius: var(--radius-lg);
-  font-size: 0.9rem;
-}
-
-.qr-button img {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
 }
 
 .login-card {
