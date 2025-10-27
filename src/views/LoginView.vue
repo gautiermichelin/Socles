@@ -2,32 +2,26 @@
   <div class="login-container">
     <div class="login-header">
       <div class="logo">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="4" y="8" width="16" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
-          <rect x="8" y="4" width="8" height="4" rx="1" stroke="currentColor" stroke-width="2"/>
-        </svg>
+        <img src="/logo_noir.svg" alt="Logo SOCLES" />
         <h1>SOCLES</h1>
       </div>
-      <button class="qr-button">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="3" y="3" width="8" height="8" rx="1" stroke="currentColor" stroke-width="2"/>
-          <rect x="13" y="3" width="8" height="8" rx="1" stroke="currentColor" stroke-width="2"/>
-          <rect x="3" y="13" width="8" height="8" rx="1" stroke="currentColor" stroke-width="2"/>
-          <rect x="13" y="13" width="8" height="8" rx="1" stroke="currentColor" stroke-width="2"/>
-        </svg>
+      <button @click="openQRScanner" class="qr-button">
+        <img src="/qrcode.png" alt="QR code" />
         QR code
       </button>
     </div>
-    
+
+    <QRScanner
+      v-if="showQRScanner"
+      @scan="handleQRScan"
+      @close="closeQRScanner"
+    />
+
     <div class="login-card">
       <div class="app-icon">
-        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="4" y="8" width="16" height="12" rx="2" fill="#8B5E3C"/>
-          <rect x="8" y="4" width="8" height="4" rx="1" fill="#6B4423"/>
-          <circle cx="12" cy="10" r="1.5" fill="#4CAF50"/>
-        </svg>
+        <img src="/logo_application.png" alt="Logo de l'application" />
       </div>
-      
+
       <h2>Connexion</h2>
       <p class="subtitle">
         Veuillez saisir votre adresse email<br>
@@ -82,16 +76,21 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { usersDB, settingsDB, initDemoData } from '../services/db'
+import { usersDB, settingsDB, soclesDB, initDemoData } from '../services/db'
+import QRScanner from '../components/QRScanner.vue'
 
 export default {
   name: 'LoginView',
+  components: {
+    QRScanner
+  },
   setup() {
     const router = useRouter()
     const email = ref('')
     const password = ref('')
     const rememberEmail = ref(false)
     const errorMessage = ref('')
+    const showQRScanner = ref(false)
     
     // Load saved email on mount
     onMounted(async () => {
@@ -107,22 +106,22 @@ export default {
     
     const handleLogin = async () => {
       errorMessage.value = ''
-      
+
       try {
         const isValid = await usersDB.authenticate(email.value, password.value)
-        
+
         if (isValid) {
           // Save authentication state
           await settingsDB.set('isAuthenticated', true)
           await settingsDB.set('currentUser', email.value)
-          
+
           // Save email if checkbox is checked
           if (rememberEmail.value) {
             await settingsDB.set('savedEmail', email.value)
           } else {
             await settingsDB.set('savedEmail', null)
           }
-          
+
           // Redirect to socles list
           router.push({ name: 'SoclesList' })
         } else {
@@ -133,13 +132,54 @@ export default {
         errorMessage.value = 'Une erreur est survenue lors de la connexion'
       }
     }
-    
+
+    // QR Scanner functions
+    const openQRScanner = () => {
+      showQRScanner.value = true
+    }
+
+    const closeQRScanner = () => {
+      showQRScanner.value = false
+    }
+
+    const handleQRScan = async (scannedData) => {
+      try {
+        // Authenticate first if not authenticated
+        const isAuthenticated = await settingsDB.get('isAuthenticated')
+
+        if (!isAuthenticated) {
+          errorMessage.value = 'Veuillez vous connecter d\'abord'
+          return
+        }
+
+        // Search for socle by inventory number
+        const allSocles = await soclesDB.getAll()
+        const foundSocle = allSocles.find(
+          socle => socle.inventoryNumber && socle.inventoryNumber.toLowerCase() === scannedData.toLowerCase()
+        )
+
+        if (foundSocle) {
+          // Redirect to the socle edit page
+          router.push({ name: 'SocleEdit', params: { id: foundSocle.id } })
+        } else {
+          errorMessage.value = `Aucun socle trouvé avec le numéro: ${scannedData}`
+        }
+      } catch (error) {
+        console.error('QR scan error:', error)
+        errorMessage.value = 'Une erreur est survenue lors de la recherche'
+      }
+    }
+
     return {
       email,
       password,
       rememberEmail,
       errorMessage,
-      handleLogin
+      showQRScanner,
+      handleLogin,
+      openQRScanner,
+      closeQRScanner,
+      handleQRScan
     }
   }
 }
@@ -168,9 +208,10 @@ export default {
   color: #1e293b;
 }
 
-.logo svg {
+.logo img {
   width: 48px;
   height: 48px;
+  object-fit: contain;
 }
 
 .logo h1 {
@@ -190,9 +231,10 @@ export default {
   font-size: 0.9rem;
 }
 
-.qr-button svg {
+.qr-button img {
   width: 24px;
   height: 24px;
+  object-fit: contain;
 }
 
 .login-card {
@@ -211,12 +253,10 @@ export default {
   margin-bottom: var(--spacing-lg);
 }
 
-.app-icon svg {
-  width: 80px;
-  height: 80px;
-  background: linear-gradient(135deg, #81c784 0%, #66bb6a 100%);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-md);
+.app-icon img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
 }
 
 h2 {
