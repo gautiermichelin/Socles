@@ -1,7 +1,7 @@
 {
   "name": "socles",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "Application de gestion des socles d'exposition pour musées et collections culturelles",
   "scripts": {
