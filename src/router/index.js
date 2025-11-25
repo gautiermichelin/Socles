@@ -3,13 +3,18 @@ import { settingsDB } from '../services/db'
 
 // Views
 import LoginView from '../views/LoginView.vue'
+import HomeView from '../views/HomeView.vue'
 import SoclesListView from '../views/SoclesListView.vue'
 import SocleFormView from '../views/SocleFormView.vue'
+import ExpositionsListView from '../views/ExpositionsListView.vue'
+import ExpositionFormView from '../views/ExpositionFormView.vue'
 
 const routes = [
   {
     path: '/',
-    redirect: '/login'
+    name: 'Home',
+    component: HomeView,
+    meta: { requiresAuth: true }
   },
   {
     path: '/login',
@@ -19,6 +24,10 @@ const routes = [
   },
   {
     path: '/socles',
+    redirect: '/'
+  },
+  {
+    path: '/socles/list',
     name: 'SoclesList',
     component: SoclesListView,
     meta: { requiresAuth: true }
@@ -33,6 +42,25 @@ const routes = [
     path: '/socles/:id',
     name: 'SocleEdit',
     component: SocleFormView,
+    meta: { requiresAuth: true },
+    props: true
+  },
+  {
+    path: '/expositions',
+    name: 'ExpositionsList',
+    component: ExpositionsListView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/expositions/new',
+    name: 'ExpositionCreate',
+    component: ExpositionFormView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/expositions/:id',
+    name: 'ExpositionEdit',
+    component: ExpositionFormView,
     meta: { requiresAuth: true },
     props: true
   }
@@ -52,7 +80,7 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth && !isAuthenticated) {
     next({ name: 'Login' })
   } else if (to.meta.requiresGuest && isAuthenticated) {
-    next({ name: 'SoclesList' })
+    next({ name: 'Home' })
   } else {
     next()
   }

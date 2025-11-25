@@ -1,23 +1,29 @@
 <template>
   <div class="socle-form-view">
     <header class="app-header">
-      <div class="logo">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="4" y="8" width="16" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
-          <rect x="8" y="4" width="8" height="4" rx="1" stroke="currentColor" stroke-width="2"/>
-        </svg>
+      <div class="logo" @click="goHome" style="cursor: pointer;">
+        <img src="/images/logo.png" alt="Logo Socles" class="logo-image" />
         <h1>SOCLES</h1>
       </div>
-      <button class="qr-button">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="3" y="3" width="8" height="8" rx="1" stroke="currentColor" stroke-width="2"/>
-          <rect x="13" y="3" width="8" height="8" rx="1" stroke="currentColor" stroke-width="2"/>
-          <rect x="3" y="13" width="8" height="8" rx="1" stroke="currentColor" stroke-width="2"/>
-          <rect x="13" y="13" width="8" height="8" rx="1" stroke="currentColor" stroke-width="2"/>
-        </svg>
-        QR code
-      </button>
+      <div class="museum-name">
+        <img src="/images/logo-musee-quai-branly.png" alt="Musée du Quai Branly Jacques Chirac" class="museum-logo" />
+      </div>
+      <div class="header-actions">
+        <button @click="openQRScanner" class="qr-button">
+          <img src="/qrcode.png" alt="QR code" />
+          QR code
+        </button>
+        <button @click="handleLogout" class="logout-button">
+          Déconnexion
+        </button>
+      </div>
     </header>
+
+    <QRScanner
+      v-if="showQRScanner"
+      @scan="handleQRScan"
+      @close="closeQRScanner"
+    />
     
     <div class="container">
       <div class="form-header">
@@ -174,59 +180,70 @@
             <!-- Exposition -->
             <div class="form-group">
               <label for="exposition">Exposition</label>
-              <div class="input-with-button">
-                <input
-                  id="exposition"
-                  v-model="form.exposition"
-                  type="text"
-                />
-                <button type="button" class="add-exposition-button">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                  </svg>
-                  Ajouter une exposition
-                </button>
-              </div>
+              <select
+                id="exposition"
+                v-model="form.exposition"
+                class="form-select"
+              >
+                <option value="">Sélectionnez une exposition</option>
+                <option
+                  v-for="expo in availableExpositions"
+                  :key="expo.id"
+                  :value="expo.shortTitle"
+                >
+                  {{ expo.shortTitle }}
+                </option>
+              </select>
             </div>
-            
+
             <!-- Reserved -->
-            <div class="form-group">
-              <label for="reserved">Réservé</label>
-              <input
-                id="reserved"
-                v-model="form.reserved"
-                type="text"
-              />
+            <div class="form-group checkbox-group">
+              <label class="checkbox-label">
+                <input
+                  id="reserved"
+                  v-model="form.reserved"
+                  type="checkbox"
+                />
+                <span>Réservé</span>
+              </label>
             </div>
-            
+
             <!-- Anti-seismic -->
-            <div class="form-group">
-              <label for="antiSeismic">Anti-sismique</label>
-              <input
-                id="antiSeismic"
-                v-model="form.antiSeismic"
-                type="text"
-              />
+            <div class="form-group checkbox-group">
+              <label class="checkbox-label">
+                <input
+                  id="antiSeismic"
+                  v-model="form.antiSeismic"
+                  type="checkbox"
+                />
+                <span>Anti-sismique</span>
+              </label>
             </div>
-            
+
             <!-- Do not adapt -->
-            <div class="form-group">
-              <label for="doNotAdapt">Ne pas adapter</label>
-              <input
-                id="doNotAdapt"
-                v-model="form.doNotAdapt"
-                type="text"
-              />
+            <div class="form-group checkbox-group">
+              <label class="checkbox-label">
+                <input
+                  id="doNotAdapt"
+                  v-model="form.doNotAdapt"
+                  type="checkbox"
+                />
+                <span>Ne pas adapter</span>
+              </label>
             </div>
-            
+
             <!-- Showcase -->
             <div class="form-group">
               <label for="showcase">En vitrine/hors vitrine</label>
-              <input
+              <select
                 id="showcase"
                 v-model="form.showcase"
-                type="text"
-              />
+                class="form-select"
+              >
+                <option :value="null">-</option>
+                <option :value="true">En vitrine</option>
+                <option :value="false">Hors vitrine</option>
+              </select>
             </div>
             
             <!-- Comments -->
@@ -242,8 +259,53 @@
           
           <!-- Photos Tab -->
           <div v-show="activeTab === 'photos'" class="tab-content">
-            <div class="empty-tab">
-              <p>Fonctionnalité de gestion des photos à venir</p>
+            <div class="photos-section">
+              <div class="form-group">
+                <label for="photoUpload">Ajouter des photos</label>
+                <input
+                  id="photoUpload"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  @change="handlePhotoUpload"
+                  class="photo-input"
+                />
+                <p class="help-text">Vous pouvez sélectionner plusieurs photos à la fois</p>
+              </div>
+
+              <div v-if="form.photos && form.photos.length > 0" class="photos-grid">
+                <div
+                  v-for="(photo, index) in form.photos"
+                  :key="index"
+                  class="photo-card"
+                >
+                  <img :src="photo.url" :alt="`Photo ${index + 1}`" class="photo-preview" />
+                  <div class="photo-overlay">
+                    <button
+                      type="button"
+                      @click="removePhoto(index)"
+                      class="remove-photo-btn"
+                      title="Supprimer cette photo"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="photo-info">
+                    <input
+                      v-model="photo.caption"
+                      type="text"
+                      placeholder="Légende de la photo"
+                      class="photo-caption"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div v-else class="empty-photos">
+                <p>Aucune photo ajoutée pour ce socle</p>
+              </div>
             </div>
           </div>
           
@@ -266,28 +328,41 @@
         </form>
       </div>
     </div>
+
+    <footer class="app-footer">
+      <img src="/images/logo-musee-quai-branly.png" alt="Musée du Quai Branly Jacques Chirac" class="footer-logo" />
+      <div class="footer-credit">
+        Développé par <a href="https://www.ideesculture.com" target="_blank" rel="noopener noreferrer">IdéesCulture</a>
+      </div>
+    </footer>
   </div>
 </template>
 
 <script>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { soclesDB } from '../services/db'
+import { soclesDB, expositionsDB, settingsDB } from '../services/db'
+import QRScanner from '../components/QRScanner.vue'
 
 export default {
   name: 'SocleFormView',
+  components: {
+    QRScanner
+  },
   setup() {
     const router = useRouter()
     const route = useRoute()
     const isEditing = ref(false)
     const activeTab = ref('main')
-    
+    const availableExpositions = ref([])
+    const showQRScanner = ref(false)
+
     const tabs = [
       { id: 'main', label: 'Champs principaux' },
       { id: 'photos', label: 'Photos' },
       { id: 'advanced', label: 'Informations avancées' }
     ]
-    
+
     const form = ref({
       isDraft: false,
       inventoryNumber: '',
@@ -302,22 +377,39 @@ export default {
       location: '',
       crate: '',
       exposition: '',
-      reserved: '',
-      antiSeismic: '',
-      doNotAdapt: '',
-      showcase: '',
-      comments: ''
+      reserved: false,
+      antiSeismic: false,
+      doNotAdapt: false,
+      showcase: null,
+      comments: '',
+      photos: []
     })
-    
-    // Load socle data if editing
+
+    // Load expositions and socle data
     onMounted(async () => {
+      // Load available expositions
+      try {
+        availableExpositions.value = await expositionsDB.getAll()
+      } catch (error) {
+        console.error('Error loading expositions:', error)
+      }
+
+      // Load socle data if editing
       const socleId = route.params.id
       if (socleId) {
         isEditing.value = true
         try {
           const socle = await soclesDB.getById(parseInt(socleId))
           if (socle) {
-            form.value = { ...socle }
+            // Ensure photos array exists and convert old values
+            form.value = {
+              ...socle,
+              photos: socle.photos || [],
+              reserved: !!socle.reserved,
+              antiSeismic: !!socle.antiSeismic,
+              doNotAdapt: !!socle.doNotAdapt,
+              showcase: socle.showcase === true ? true : socle.showcase === false ? false : null
+            }
           } else {
             alert('Socle non trouvé')
             goBack()
@@ -347,14 +439,83 @@ export default {
     const goBack = () => {
       router.push({ name: 'SoclesList' })
     }
-    
+
+    // Handle photo upload
+    const handlePhotoUpload = (event) => {
+      const files = event.target.files
+      if (!files || files.length === 0) return
+
+      Array.from(files).forEach(file => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          form.value.photos.push({
+            url: e.target.result,
+            caption: '',
+            uploadedAt: new Date().toISOString()
+          })
+        }
+        reader.readAsDataURL(file)
+      })
+
+      // Reset input to allow re-uploading the same file
+      event.target.value = ''
+    }
+
+    // Remove a photo
+    const removePhoto = (index) => {
+      if (confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) {
+        form.value.photos.splice(index, 1)
+      }
+    }
+
+    // QR Scanner functions
+    const openQRScanner = () => {
+      showQRScanner.value = true
+    }
+
+    const closeQRScanner = () => {
+      showQRScanner.value = false
+    }
+
+    const handleQRScan = async (result) => {
+      closeQRScanner()
+      // Try to find socle by inventory number
+      const socles = await soclesDB.getAll()
+      const socle = socles.find(s => s.inventoryNumber === result)
+      if (socle) {
+        router.push({ name: 'SocleEdit', params: { id: socle.id } })
+      } else {
+        alert('Aucun socle trouvé avec ce numéro d\'inventaire')
+      }
+    }
+
+    // Logout
+    const handleLogout = async () => {
+      await settingsDB.set('isAuthenticated', false)
+      router.push({ name: 'Login' })
+    }
+
+    // Navigate to home
+    const goHome = () => {
+      router.push({ name: 'Home' })
+    }
+
     return {
       isEditing,
       activeTab,
       tabs,
       form,
+      availableExpositions,
+      showQRScanner,
       handleSubmit,
-      goBack
+      goBack,
+      handlePhotoUpload,
+      removePhoto,
+      openQRScanner,
+      closeQRScanner,
+      handleQRScan,
+      handleLogout,
+      goHome
     }
   }
 }
@@ -370,27 +531,49 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-lg);
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .logo {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  color: white;
+  color: #000;
+  flex: 0 0 auto;
 }
 
-.logo svg {
-  width: 32px;
-  height: 32px;
+.logo-image {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
 }
 
 .logo h1 {
   font-size: 1.5rem;
   font-weight: 700;
   margin: 0;
+  letter-spacing: 0.05em;
+}
+
+.museum-name {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: center;
+}
+
+.museum-logo {
+  height: 40px;
+  object-fit: contain;
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+  flex: 0 0 auto;
 }
 
 .qr-button {
@@ -398,10 +581,55 @@ export default {
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: none;
+  background: #f3f4f6;
+  color: var(--color-text);
+  border: 1px solid #e5e7eb;
   border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.qr-button:hover {
+  background: #e5e7eb;
+}
+
+.qr-button img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.logout-button {
+  background: #f3f4f6;
+  color: var(--color-text);
+  border: 1px solid #e5e7eb;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.logout-button:hover {
+  background: #e5e7eb;
+}
+
+/* Responsive Header */
+@media (max-width: 768px) {
+  .logo h1 {
+    display: none;
+  }
+
+  .museum-logo {
+    max-width: 140px;
+  }
+
+  .header-actions {
+    gap: var(--spacing-xs);
+  }
 }
 
 .container {
@@ -541,6 +769,52 @@ input:checked + .slider:before {
   gap: var(--spacing-md);
 }
 
+/* Checkbox styles */
+.checkbox-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.checkbox-label span {
+  user-select: none;
+}
+
+/* Select styles */
+.form-select {
+  width: 100%;
+  padding: var(--spacing-md);
+  font-size: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.form-select:hover {
+  border-color: var(--color-primary);
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
 .input-with-button {
   display: flex;
   gap: var(--spacing-sm);
@@ -568,6 +842,116 @@ input:checked + .slider:before {
   text-align: center;
   padding: var(--spacing-xl);
   color: var(--color-text-secondary);
+}
+
+/* Photos Section */
+.photos-section {
+  width: 100%;
+}
+
+.photo-input {
+  width: 100%;
+  padding: var(--spacing-md);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  background: var(--color-surface-variant);
+}
+
+.photo-input:hover {
+  border-color: var(--color-primary);
+  background: #f8fafc;
+}
+
+.help-text {
+  margin-top: var(--spacing-xs);
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-lg);
+}
+
+.photo-card {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: white;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.photo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.photo-card:hover .photo-overlay {
+  opacity: 1;
+}
+
+.photo-preview {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: var(--spacing-sm);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.remove-photo-btn {
+  background: rgba(220, 38, 38, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.remove-photo-btn:hover {
+  background: rgba(185, 28, 28, 1);
+}
+
+.photo-info {
+  padding: var(--spacing-md);
+}
+
+.photo-caption {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+}
+
+.photo-caption:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.empty-photos {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-variant);
+  border-radius: var(--radius-lg);
+  margin-top: var(--spacing-lg);
 }
 
 .form-actions {
@@ -606,5 +990,35 @@ input:checked + .slider:before {
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+.app-footer {
+  background: white;
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  border-top: 1px solid #e5e7eb;
+}
+
+.footer-logo {
+  height: 40px;
+  object-fit: contain;
+}
+
+.footer-credit {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.footer-credit a {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.footer-credit a:hover {
+  text-decoration: underline;
 }
 </style>

@@ -33,6 +33,9 @@ npm install
 # Lancement du serveur de développement
 npm run dev
 
+# Lancement du serveur de développement en réseau local
+npm run dev -- --host
+
 # Build pour la production
 npm run build
 

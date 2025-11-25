@@ -8,9 +8,6 @@
     </div>
 
     <div class="login-card">
-      <div class="app-icon">
-        <img src="/logo_application.png" alt="Logo de l'application" />
-      </div>
 
       <h2>Connexion</h2>
       <p class="subtitle">
@@ -20,7 +17,7 @@
       
       <form @submit.prevent="handleLogin">
         <div class="form-group">
-          <label for="email">Email Address</label>
+          <label for="email">Adresse email</label>
           <input
             id="email"
             v-model="email"
@@ -32,7 +29,7 @@
         </div>
         
         <div class="form-group">
-          <label for="password">Password</label>
+          <label for="password">Mot de passe</label>
           <input
             id="password"
             v-model="password"
@@ -60,6 +57,14 @@
         </button>
       </form>
     </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <img src="/images/logo-musee-quai-branly.png" alt="Musée du Quai Branly Jacques Chirac" class="footer-logo" />
+      <div class="footer-credit">
+        Développé par <a href="https://www.ideesculture.com" target="_blank" rel="noopener noreferrer">IdéesCulture</a>
+      </div>
+    </footer>
   </div>
 </template>
 
@@ -107,8 +112,8 @@ export default {
             await settingsDB.set('savedEmail', null)
           }
 
-          // Redirect to socles list
-          router.push({ name: 'SoclesList' })
+          // Redirect to home page
+          router.push({ name: 'Home' })
         } else {
           errorMessage.value = 'Email ou mot de passe incorrect'
         }
@@ -135,7 +140,7 @@ export default {
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, #a5b4fc 0%, #3b5bdb 100%);
-  padding: var(--spacing-lg);
+  padding: 0;
 }
 
 .login-header {
@@ -143,6 +148,8 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+
 }
 
 .logo {
@@ -246,5 +253,37 @@ form {
   padding: var(--spacing-md);
   font-size: 1.1rem;
   font-weight: 600;
+}
+
+/* Footer */
+.app-footer {
+  background: white;
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  border-top: 1px solid #e5e7eb;
+  margin-top: auto;
+}
+
+.footer-logo {
+  height: 40px;
+  object-fit: contain;
+}
+
+.footer-credit {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.footer-credit a {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.footer-credit a:hover {
+  text-decoration: underline;
 }
 </style>
