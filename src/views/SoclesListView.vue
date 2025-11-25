@@ -60,27 +60,26 @@
             {{ expo }}
           </option>
         </select>
-    <label for="typologie-filter">Typologie:</label>
-    <select id="typologie-filter" v-model="selectedTypologie" class="typologie-select">
-      <option value="">Toutes les typologies</option>
-      <option
-        v-for="type in availableTypologies"
-        :key="type"
-        :value="type"
-      >
-        {{ type }}
-      </option>
-    </select>
-    
-      <div class="view-toggle" style="display:flex;gap:8px;align-items:center;">
-        <button @click="viewMode = 'tiles'" :class="{active: viewMode === 'tiles'}" class="export-button">Tuiles</button>
-        <button @click="viewMode = 'table'" :class="{active: viewMode === 'table'}" class="export-button">Liste</button>
+        <label for="typologie-filter">Typologie:</label>
+        <select id="typologie-filter" v-model="selectedTypologie" class="typologie-select">
+          <option value="">Toutes les typologies</option>
+          <option
+            v-for="type in availableTypologies"
+            :key="type"
+            :value="type"
+          >
+            {{ type }}
+          </option>
+        </select>
+        
+        <div class="view-toggle" style="display:flex;gap:8px;align-items:center;">
+          <button @click="viewMode = 'tiles'" :class="{active: viewMode === 'tiles'}" class="export-button">Tuiles</button>
+          <button @click="viewMode = 'table'" :class="{active: viewMode === 'table'}" class="export-button">Liste</button>
+        </div>
+
+        <button @click="exportToCSV" class="export-button">CSV</button>
+        <button @click="exportToXLSX" class="export-button">XLSX</button>
       </div>
-
-      <button @click="exportToCSV" class="export-button">CSV</button>
-      <button @click="exportToXLSX" class="export-button">XLSX</button>
-
-		</div>
 
       <div v-if="loading" class="loading">
         Chargement...
@@ -145,68 +144,93 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
 
-        <div v-else class="table-view">
+    <!-- Table view: render full width outside the centered .container -->
+    <div v-if="!loading && filteredSocles.length > 0 && viewMode === 'table'" class="table-full-width">
+      <div class="table-view" style="width:100%;">
+        <div class="dt-container">
           <table ref="tableRef" class="display" style="width:100%">
-            <thead>
-              <tr>
-                <th>Numéro d'exposition</th>
-                <th>N°INV objet</th>
-                <th>Image socle</th>
-                <th>Hauteur (cm)</th>
-                <th>Longueur (cm)</th>
-                <th>Largeur (cm)</th>
-                <th>Typologie</th>
-                <th>Fonction du socle</th>
-                <th>Instruction de montage</th>
-                <th>Matériaux/Couleur</th>
-                <th>Localisation</th>
-                <th>Caisse</th>
-                <th>Expositions</th>
-                <th>Réservé</th>
-                <th>Anti-sismique</th>
-                <th>Ne pas adapter</th>
-                <th>En vitrine / hors vitrine</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="socle in filteredSocles" :key="socle.id">
-                <td>{{ socle.expositionNumber || '' }}</td>
-                <td>{{ socle.inventoryNumber || '' }}</td>
-                <td>
-                  <img
-                    v-if="(socle.photos && socle.photos[0] && socle.photos[0].url) || socle.imageUrl"
-                    :src="(socle.photos && socle.photos[0] && socle.photos[0].url) || socle.imageUrl"
-                    alt="Image socle"
-                    class="table-image"
-                  />
-                </td>
-                <td>{{ socle.heightCm || '' }}</td>
-                <td>{{ socle.lengthCm || '' }}</td>
-                <td>{{ socle.widthCm || '' }}</td>
-                <td>{{ socle.typography || '' }}</td>
-                <td>{{ socle.function || '' }}</td>
-                <td>{{ socle.instructions || '' }}</td>
-                <td>{{ socle.materials || '' }}</td>
-                <td>{{ socle.location || '' }}</td>
-                <td>{{ socle.crate || '' }}</td>
-                <td>{{ socle.exposition || '' }}</td>
-                <td>{{ socle.reserved ? 'Oui' : 'Non' }}</td>
-                <td>{{ socle.antiSeismic ? 'Oui' : 'Non' }}</td>
-                <td>{{ socle.doNotAdapt ? 'Oui' : 'Non' }}</td>
-                <td>{{ socle.showcase === true ? 'En vitrine' : socle.showcase === false ? 'Hors vitrine' : '-' }}</td>
-                <td>
-                  <button @click.stop="goToEdit(socle.id)">Éditer</button>
-                  <button @click.stop="deleteSocle(socle.id)">Supprimer</button>
-                </td>
-              </tr>
-            </tbody>
+          <thead>
+            <tr>
+              <th>Numéro d'exposition</th>
+              <th>N°INV objet</th>
+              <th>Image socle</th>
+              <th>Hauteur (cm)</th>
+              <th>Longueur (cm)</th>
+              <th>Largeur (cm)</th>
+              <th>Typologie</th>
+              <th>Fonction du socle</th>
+              <th>Instruction de montage</th>
+              <th>Matériaux/Couleur</th>
+              <th>Localisation</th>
+              <th>Caisse</th>
+              <th>Expositions</th>
+              <th>Réservé</th>
+              <th>Anti-sismique</th>
+              <th>Ne pas adapter</th>
+              <th>En vitrine / hors vitrine</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="socle in filteredSocles" :key="socle.id">
+              <td>{{ socle.expositionNumber || '' }}</td>
+              <td>{{ socle.inventoryNumber || '' }}</td>
+              <td>
+                <img
+                  v-if="(socle.photos && socle.photos[0] && socle.photos[0].url) || socle.imageUrl"
+                  :src="(socle.photos && socle.photos[0] && socle.photos[0].url) || socle.imageUrl"
+                  alt="Image socle"
+                  class="table-image"
+                />
+              </td>
+              <td>{{ socle.heightCm || '' }}</td>
+              <td>{{ socle.lengthCm || '' }}</td>
+              <td>{{ socle.widthCm || '' }}</td>
+              <td>{{ socle.typography || '' }}</td>
+              <td>{{ socle.function || '' }}</td>
+              <td>{{ socle.instructions || '' }}</td>
+              <td>{{ socle.materials || '' }}</td>
+              <td>{{ socle.location || '' }}</td>
+              <td>{{ socle.crate || '' }}</td>
+              <td>{{ socle.exposition || '' }}</td>
+              <td>{{ socle.reserved ? 'Oui' : 'Non' }}</td>
+              <td>{{ socle.antiSeismic ? 'Oui' : 'Non' }}</td>
+              <td>{{ socle.doNotAdapt ? 'Oui' : 'Non' }}</td>
+              <td>{{ socle.showcase === true ? 'En vitrine' : socle.showcase === false ? 'Hors vitrine' : '-' }}</td>
+              <td>
+                <div class="actions">
+                  <button @click.stop="goToEdit(socle.id)" class="icon-button" title="Éditer" aria-label="Éditer">
+                    <!-- Page (edit) icon -->
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M14 2v6h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M9.5 13.5l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M13.5 9.5l1.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                  <button @click.stop="deleteSocle(socle.id)" class="icon-button delete" title="Supprimer" aria-label="Supprimer">
+                    <!-- Trash icon -->
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M3 6h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
           </table>
         </div>
       </div>
     </div>
 
+    <!-- Re-open centered container for subsequent content -->
+    <div class="container">
+    </div>
     <footer class="app-footer">
       <img src="/images/logo-musee-quai-branly.png" alt="Musée du Quai Branly Jacques Chirac" class="footer-logo" />
       <div class="footer-credit">
@@ -1121,6 +1145,40 @@ export default {
   max-height: 60px;
   object-fit: cover;
   display: block;
+}
+
+/* DataTables container: small padding and white background applied to full-width wrapper */
+.table-full-width {
+  padding: 12px 20px;
+  background: #ffffff;
+}
+
+/* Icon buttons in table actions */
+.icon-button {
+  background: none;
+  border: none;
+  padding: 6px;
+  margin: 0 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-button:hover {
+  background: rgba(0,0,0,0.04);
+}
+.icon-button.delete {
+  color: #dc2626;
+}
+
+/* Actions container for table row buttons */
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 

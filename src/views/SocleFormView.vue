@@ -180,20 +180,25 @@
             <!-- Exposition -->
             <div class="form-group">
               <label for="exposition">Exposition</label>
-              <select
-                id="exposition"
-                v-model="form.exposition"
-                class="form-select"
-              >
-                <option value="">Sélectionnez une exposition</option>
-                <option
-                  v-for="expo in availableExpositions"
-                  :key="expo.id"
-                  :value="expo.shortTitle"
+              <div class="exposition-inline">
+                <select
+                  id="exposition"
+                  v-model="form.exposition"
+                  class="form-select"
                 >
-                  {{ expo.shortTitle }}
-                </option>
-              </select>
+                  <option value="">Sélectionnez une exposition</option>
+                  <option
+                    v-for="expo in availableExpositions"
+                    :key="expo.id"
+                    :value="expo.shortTitle"
+                  >
+                    {{ expo.shortTitle }}
+                  </option>
+                </select>
+                <button type="button" class="add-exposition-inline" @click="openExpositionModal" title="Ajouter une exposition">
+                  Ajouter une exposition
+                </button>
+              </div>
             </div>
 
             <!-- Reserved -->
@@ -273,10 +278,11 @@
                 <p class="help-text">Vous pouvez sélectionner plusieurs photos à la fois</p>
               </div>
 
-              <div v-if="form.photos && form.photos.length > 0" class="photos-grid">
+              <div v-if="(form.photos && form.photos.length > 0) || form.imageUrl" class="photos-grid">
+                <!-- Render uploaded photos first -->
                 <div
                   v-for="(photo, index) in form.photos"
-                  :key="index"
+                  :key="`photo-${index}`"
                   class="photo-card"
                 >
                   <img :src="photo.url" :alt="`Photo ${index + 1}`" class="photo-preview" />
@@ -301,6 +307,31 @@
                     />
                   </div>
                 </div>
+
+                <!-- If there is a legacy single imageUrl, show it as a card too -->
+                <div v-if="form.imageUrl" class="photo-card image-url-card">
+                  <img :src="form.imageUrl" alt="Image principale" class="photo-preview" />
+                  <div class="photo-overlay">
+                    <button
+                      type="button"
+                      @click="removePhoto(null, true)"
+                      class="remove-photo-btn"
+                      title="Supprimer cette photo"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="photo-info">
+                    <input
+                      v-model="form.imageUrlCaption"
+                      type="text"
+                      placeholder="Légende de l'image principale"
+                      class="photo-caption"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div v-else class="empty-photos">
@@ -321,11 +352,30 @@
             <button type="button" @click="goBack" class="cancel-button">
               Annuler
             </button>
+            <button type="button" @click.prevent="generateQRCodePdf" :disabled="generateInProgress" class="generate-qr-button">
+              <span v-if="!generateInProgress">Générer un QR code</span>
+              <span v-else class="qr-loading"><svg class="spinner" viewBox="0 0 50 50" width="16" height="16"><circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="4"></circle></svg> Génération…</span>
+            </button>
             <button type="submit" class="primary save-button">
               {{ isEditing ? 'Enregistrer les modifications' : 'Créer le socle' }}
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Exposition iframe modal -->
+    <div v-if="showExpoModal" class="iframe-modal" role="dialog" aria-modal="true">
+      <div class="iframe-backdrop" @click.self="closeExpositionModal">
+        <div class="iframe-container">
+          <div class="iframe-header">
+            <div class="iframe-title">Créer une exposition</div>
+            <div class="iframe-actions">
+              <button class="iframe-close" @click="closeExpositionModal" aria-label="Fermer">✕</button>
+            </div>
+          </div>
+          <iframe :src="expoIframeSrc" frameborder="0" class="expo-iframe"></iframe>
+        </div>
       </div>
     </div>
 
@@ -339,10 +389,12 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { soclesDB, expositionsDB, settingsDB } from '../services/db'
 import QRScanner from '../components/QRScanner.vue'
+import { jsPDF } from 'jspdf'
+import QRCode from 'qrcode'
 
 export default {
   name: 'SocleFormView',
@@ -355,6 +407,8 @@ export default {
     const isEditing = ref(false)
     const activeTab = ref('main')
     const availableExpositions = ref([])
+    const showExpoModal = ref(false)
+    const expoIframeSrc = '/expositions/new?embedded=1'
     const showQRScanner = ref(false)
 
     const tabs = [
@@ -382,11 +436,23 @@ export default {
       doNotAdapt: false,
       showcase: null,
       comments: '',
-      photos: []
+      photos: [],
+      // legacy single image field (demo data uses imageUrl) and optional caption
+      imageUrl: '',
+      imageUrlCaption: ''
     })
 
     // Load expositions and socle data
+    const loadExpositions = async () => {
+      try {
+        availableExpositions.value = await expositionsDB.getAll()
+      } catch (error) {
+        console.error('Error loading expositions:', error)
+      }
+    }
+
     onMounted(async () => {
+      await loadExpositions()
       // Load available expositions
       try {
         availableExpositions.value = await expositionsDB.getAll()
@@ -408,7 +474,9 @@ export default {
               reserved: !!socle.reserved,
               antiSeismic: !!socle.antiSeismic,
               doNotAdapt: !!socle.doNotAdapt,
-              showcase: socle.showcase === true ? true : socle.showcase === false ? false : null
+              showcase: socle.showcase === true ? true : socle.showcase === false ? false : null,
+              imageUrl: socle.imageUrl || '',
+              imageUrlCaption: socle.imageUrlCaption || ''
             }
           } else {
             alert('Socle non trouvé')
@@ -421,6 +489,38 @@ export default {
         }
       }
     })
+
+    // Open exposition modal with iframe
+    const openExpositionModal = () => {
+      showExpoModal.value = true
+    }
+
+    const closeExpositionModal = async () => {
+      showExpoModal.value = false
+      // Refresh expositions list after closing
+      await loadExpositions()
+    }
+
+    // Listen for postMessage events from the iframe to auto-select created exposition
+    const onMessage = async (ev) => {
+      try {
+        if (!ev || !ev.data) return
+        const payload = ev.data
+        if (payload && payload.type === 'exposition-created') {
+          // payload.data expected to contain { shortTitle }
+          if (payload.data && payload.data.shortTitle) {
+            form.value.exposition = payload.data.shortTitle
+          }
+          await loadExpositions()
+          showExpoModal.value = false
+        }
+      } catch (e) {
+        console.warn('onMessage: error handling message', e)
+      }
+    }
+
+    // Attach message listener
+    window.addEventListener('message', onMessage)
     
     const handleSubmit = async () => {
       try {
@@ -461,9 +561,17 @@ export default {
       event.target.value = ''
     }
 
-    // Remove a photo
-    const removePhoto = (index) => {
-      if (confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) {
+    // Remove a photo (supports uploaded photos and legacy imageUrl)
+    const removePhoto = (index, isImageUrl = false) => {
+      if (!confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) return
+
+      if (isImageUrl) {
+        form.value.imageUrl = ''
+        form.value.imageUrlCaption = ''
+        return
+      }
+
+      if (typeof index === 'number' && form.value.photos && form.value.photos.length > index) {
         form.value.photos.splice(index, 1)
       }
     }
@@ -500,6 +608,68 @@ export default {
       router.push({ name: 'Home' })
     }
 
+    // Clean up message listener when component unmounts
+    onUnmounted(() => {
+      try { window.removeEventListener('message', onMessage) } catch (e) { /* ignore */ }
+    })
+
+    // Generate QR code locally and produce a PDF containing the QR (link to public URL)
+    const generateInProgress = ref(false)
+
+    const generateQRCodePdf = async () => {
+      if (generateInProgress.value) return
+      generateInProgress.value = true
+      try {
+        const inv = (form.value.inventoryNumber || '').trim()
+        if (!inv) {
+          alert('Veuillez renseigner le numéro d\'inventaire avant de générer le QR code')
+          return
+        }
+
+        const targetUrl = `https://socles.ideesculture.fr/socles/${encodeURIComponent(inv)}`
+
+        // Generate dataURL for QR locally
+        const dataUrl = await QRCode.toDataURL(targetUrl, { width: 400, margin: 1 })
+
+        // Create PDF: A4 portrait, place title and centered QR
+        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
+        const pageW = pdf.internal.pageSize.getWidth()
+
+        // Title
+        pdf.setFontSize(16)
+        pdf.text(`Socle ${inv}`, pageW / 2, 30, { align: 'center' })
+
+        // Image sizing: target width 80mm
+        const imgTargetWidth = 80
+        let imgTargetHeight = imgTargetWidth
+        try {
+          const imgProps = pdf.getImageProperties(dataUrl)
+          if (imgProps && imgProps.width && imgProps.height) {
+            const ratio = imgProps.width / imgProps.height
+            imgTargetHeight = imgTargetWidth / ratio
+          }
+        } catch (e) {
+          // ignore
+        }
+
+        const x = (pageW - imgTargetWidth) / 2
+        const y = 40
+        pdf.addImage(dataUrl, 'PNG', x, y, imgTargetWidth, imgTargetHeight)
+
+        // Add the target URL below the QR
+        pdf.setFontSize(10)
+        pdf.text(targetUrl, pageW / 2, y + imgTargetHeight + 12, { align: 'center' })
+
+        pdf.save(`socle_qr_${inv}.pdf`)
+      } catch (err) {
+        console.error('generateQRCodePdf error', err)
+        alert('Erreur lors de la génération du PDF QR code')
+      } finally {
+        generateInProgress.value = false
+      }
+
+    }
+
     return {
       isEditing,
       activeTab,
@@ -507,6 +677,12 @@ export default {
       form,
       availableExpositions,
       showQRScanner,
+      showExpoModal,
+      expoIframeSrc,
+      openExpositionModal,
+      closeExpositionModal,
+      generateQRCodePdf,
+      generateInProgress,
       handleSubmit,
       goBack,
       handlePhotoUpload,
@@ -945,6 +1121,78 @@ input:checked + .slider:before {
   border-color: var(--color-primary);
 }
 
+/* Exposition inline add button */
+.exposition-inline {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.add-exposition-inline {
+  background: #2563eb; /* blue */
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.add-exposition-inline:hover {
+  background: #1e40af;
+}
+
+/* Iframe modal styles */
+.iframe-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+.iframe-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.iframe-container {
+  width: 95%;
+  height: 90%;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+.iframe-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: #f8fafc;
+}
+.iframe-title {
+  font-weight: 700;
+}
+.iframe-actions { }
+.iframe-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+}
+.expo-iframe {
+  flex: 1 1 auto;
+  width: 100%;
+  border: none;
+}
+
 .empty-photos {
   text-align: center;
   padding: var(--spacing-xl);
@@ -975,6 +1223,33 @@ input:checked + .slider:before {
 .save-button {
   padding: var(--spacing-md) var(--spacing-xl);
   font-weight: 600;
+}
+
+.generate-qr-button {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.generate-qr-button:hover { background: #1e40af }
+
+.qr-loading {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.spinner {
+  animation: spin 1s linear infinite;
+}
+.spinner .path {
+  stroke: white;
+  stroke-linecap: round;
+}
+@keyframes spin {
+  100% { transform: rotate(360deg); }
 }
 
 @media (max-width: 768px) {

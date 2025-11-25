@@ -89,13 +89,6 @@
         </div>
       </section>
 
-      <!-- Add Caisse Section -->
-      <section class="section caisse-section">
-        <button @click="addCaisse" class="section-action-btn">
-          Ajouter une caisse
-        </button>
-      </section>
-
       <!-- Exhibitions Section -->
       <section class="section">
         <h2 class="section-title">Parcourir les expositions</h2>
@@ -572,8 +565,9 @@ export default {
   font-size: 2rem;
   font-weight: 700;
   text-align: center;
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
   color: #1f2937;
+  
 }
 
 .section-subtitle {
@@ -606,6 +600,7 @@ export default {
   cursor: pointer;
   font-size: 1.2rem;
   transition: all 0.2s;
+  padding:0;
 }
 
 .carousel-btn:hover:not(:disabled) {

@@ -322,7 +322,7 @@ export async function initDemoData() {
       endDate: '2022-05-15',
       location: 'Musée du Quai Branly',
       imageUrl: expo4Image,
-      color: '#3b82f6'
+      color: '#7c4d5c'
     })
   }
 
@@ -330,9 +330,9 @@ export async function initDemoData() {
   if (socles.length === 0) {
     // Create demo user
     await usersDB.save({
-      email: 'demo@socles.fr',
-      password: 'demo',
-      name: 'Utilisateur démo'
+      email: 'socles@quaibranly.fr',
+      password: 'socles',
+      name: 'Utilisateur démo socles'
     })
 
     // Real socles data from Excel file

@@ -1,6 +1,6 @@
 <template>
   <div class="exposition-form-view">
-    <header class="app-header">
+    <header v-if="!isEmbedded" class="app-header">
       <div class="logo" @click="goHome" style="cursor: pointer;">
         <img src="/images/logo.png" alt="Logo Socles" class="logo-image" />
         <h1>SOCLES</h1>
@@ -123,7 +123,7 @@
       </div>
     </div>
 
-    <footer class="app-footer">
+    <footer v-if="!isEmbedded" class="app-footer">
       <img src="/images/logo-musee-quai-branly.png" alt="Musée du Quai Branly Jacques Chirac" class="footer-logo" />
       <div class="footer-credit">
         Développé par <a href="https://www.ideesculture.com" target="_blank" rel="noopener noreferrer">IdéesCulture</a>
@@ -133,7 +133,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { expositionsDB, settingsDB } from '../services/db'
 
@@ -149,6 +149,14 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const isEditing = ref(!!props.id)
+    const isEmbedded = computed(() => {
+      try {
+        return route && route.query && route.query.embedded === '1'
+      } catch (e) {
+        // fallback: also consider being in an iframe
+        return window && window.self !== window.top
+      }
+    })
 
     const form = ref({
       shortTitle: '',
@@ -190,8 +198,16 @@ export default {
             ...form.value,
             id: Number(props.id)
           })
+          // notify parent (iframe) that an exposition was updated
+          try {
+            window.parent.postMessage({ type: 'exposition-created', data: { shortTitle: form.value.shortTitle } }, window.location.origin)
+          } catch (e) { /* ignore */ }
         } else {
           await expositionsDB.create(form.value)
+          // notify parent (iframe) that an exposition was created
+          try {
+            window.parent.postMessage({ type: 'exposition-created', data: { shortTitle: form.value.shortTitle } }, window.location.origin)
+          } catch (e) { /* ignore */ }
         }
 
         router.push({ name: 'ExpositionsList' })
@@ -223,6 +239,7 @@ export default {
     return {
       form,
       isEditing,
+      isEmbedded,
       handleSubmit,
       handleImageUpload,
       goBack,
