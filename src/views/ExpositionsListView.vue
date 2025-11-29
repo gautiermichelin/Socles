@@ -1,23 +1,6 @@
 <template>
   <div class="expositions-list-view">
-    <header class="app-header">
-      <div class="logo" @click="goHome" style="cursor: pointer;">
-        <img src="/images/logo.png" alt="Logo Socles" class="logo-image" />
-        <h1>SOCLES</h1>
-      </div>
-      <div class="museum-name">
-        <img src="/images/logo-musee-quai-branly.png" alt="Musée du Quai Branly Jacques Chirac" class="museum-logo" />
-      </div>
-      <div class="header-actions">
-        <button @click="openQRScanner" class="qr-button">
-          <img src="/qrcode.png" alt="QR code" />
-          QR code
-        </button>
-        <button @click="handleLogout" class="logout-button">
-          Déconnexion
-        </button>
-      </div>
-    </header>
+    <AppHeader @open-qr-scanner="openQRScanner" />
 
     <div class="container">
       <div class="list-header">
@@ -86,22 +69,23 @@
       </div>
     </div>
 
-    <footer class="app-footer">
-      <img src="/images/logo-musee-quai-branly.png" alt="Musée du Quai Branly Jacques Chirac" class="footer-logo" />
-      <div class="footer-credit">
-        Développé par <a href="https://www.ideesculture.com" target="_blank" rel="noopener noreferrer">IdéesCulture</a>
-      </div>
-    </footer>
+    <AppFooter />
   </div>
 </template>
 
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { expositionsDB, settingsDB } from '../services/db'
+import { expositionsDB } from '../services/db'
+import AppHeader from '../components/AppHeader.vue'
+import AppFooter from '../components/AppFooter.vue'
 
 export default {
   name: 'ExpositionsListView',
+  components: {
+    AppHeader,
+    AppFooter
+  },
   setup() {
     const router = useRouter()
     const expositions = ref([])
@@ -183,17 +167,6 @@ export default {
       }
     }
 
-    // Logout
-    const handleLogout = async () => {
-      await settingsDB.set('isAuthenticated', false)
-      router.push({ name: 'Login' })
-    }
-
-    // Navigate to home
-    const goHome = () => {
-      router.push({ name: 'Home' })
-    }
-
     // QR Scanner
     const openQRScanner = () => {
       // TODO: Implement QR scanner
@@ -214,8 +187,6 @@ export default {
       goToCreate,
       goToEdit,
       deleteExposition,
-      handleLogout,
-      goHome,
       openQRScanner
     }
   }
@@ -226,111 +197,6 @@ export default {
 .expositions-list-view {
   min-height: 100vh;
   background: linear-gradient(180deg, #a5b4fc 0%, #3b5bdb 100%);
-}
-
-.app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-lg) var(--spacing-xl);
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  color: #000;
-  flex: 0 0 auto;
-}
-
-.logo-image {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
-}
-
-.logo h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-  letter-spacing: 0.05em;
-}
-
-.museum-name {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  justify-content: center;
-}
-
-.museum-logo {
-  height: 40px;
-  object-fit: contain;
-}
-
-.header-actions {
-  display: flex;
-  gap: var(--spacing-md);
-  align-items: center;
-  flex: 0 0 auto;
-}
-
-.qr-button {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: #f3f4f6;
-  color: var(--color-text);
-  border: 1px solid #e5e7eb;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background 0.2s;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.qr-button:hover {
-  background: #e5e7eb;
-}
-
-.qr-button img {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-}
-
-.logout-button {
-  background: #f3f4f6;
-  color: var(--color-text);
-  border: 1px solid #e5e7eb;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background 0.2s;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.logout-button:hover {
-  background: #e5e7eb;
-}
-
-/* Responsive Header */
-@media (max-width: 768px) {
-  .logo h1 {
-    display: none;
-  }
-
-  .museum-logo {
-    max-width: 140px;
-  }
-
-  .header-actions {
-    gap: var(--spacing-xs);
-  }
 }
 
 .container {
@@ -415,9 +281,10 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 4rem;
+  font-size: 14rem;
   font-weight: 700;
-  color: white;
+  color: rgba(255, 255, 255, 0.1);
+  filter: blur(2px);
 }
 
 .expo-overlay {
@@ -495,35 +362,5 @@ export default {
 
 .secondary:hover {
   background: #f3f4f6;
-}
-
-.app-footer {
-  background: white;
-  padding: var(--spacing-lg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-sm);
-  border-top: 1px solid #e5e7eb;
-}
-
-.footer-logo {
-  height: 40px;
-  object-fit: contain;
-}
-
-.footer-credit {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-
-.footer-credit a {
-  color: #3b82f6;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.footer-credit a:hover {
-  text-decoration: underline;
 }
 </style>

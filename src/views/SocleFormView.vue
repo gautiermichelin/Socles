@@ -1,23 +1,6 @@
 <template>
   <div class="socle-form-view">
-    <header class="app-header">
-      <div class="logo" @click="goHome" style="cursor: pointer;">
-        <img src="/images/logo.png" alt="Logo Socles" class="logo-image" />
-        <h1>SOCLES</h1>
-      </div>
-      <div class="museum-name">
-        <img src="/images/logo-musee-quai-branly.png" alt="Musée du Quai Branly Jacques Chirac" class="museum-logo" />
-      </div>
-      <div class="header-actions">
-        <button @click="openQRScanner" class="qr-button">
-          <img src="/qrcode.png" alt="QR code" />
-          QR code
-        </button>
-        <button @click="handleLogout" class="logout-button">
-          Déconnexion
-        </button>
-      </div>
-    </header>
+    <AppHeader @open-qr-scanner="openQRScanner" />
 
     <QRScanner
       v-if="showQRScanner"
@@ -76,16 +59,23 @@
             <!-- Typography -->
             <div class="form-group">
               <label for="typography">Typologie</label>
-              <input
+              <select
                 id="typography"
                 v-model="form.typography"
-                type="text"
-              />
+                class="form-select"
+              >
+                <option value="">Sélectionner une typologie</option>
+                <option value="Morpho piqué base">Morpho piqué base</option>
+                <option value="Morpho piqué fond">Morpho piqué fond</option>
+                <option value="Morpho sur platine">Morpho sur platine</option>
+                <option value="Piqué base">Piqué base</option>
+                <option value="Soclet">Soclet</option>
+              </select>
             </div>
             
             <!-- Dimensions -->
             <div class="form-group">
-              <label>Dimensions</label>
+              <label>Dimensions du socle</label>
               <div class="dimensions-grid">
                 <div>
                   <label for="heightCm">Hauteur (cm)</label>
@@ -116,7 +106,42 @@
                 </div>
               </div>
             </div>
-            
+
+            <!-- Dimensions with Object -->
+            <div class="form-group">
+              <label>Dimensions du socle avec l'objet</label>
+              <div class="dimensions-grid">
+                <div>
+                  <label for="heightWithObjectCm">Hauteur (cm)</label>
+                  <input
+                    id="heightWithObjectCm"
+                    v-model.number="form.heightWithObjectCm"
+                    type="number"
+                    step="0.1"
+                  />
+                </div>
+                <div>
+                  <label for="lengthWithObjectCm">Longueur (cm)</label>
+                  <input
+                    id="lengthWithObjectCm"
+                    v-model.number="form.lengthWithObjectCm"
+                    type="number"
+                    step="0.1"
+                  />
+                </div>
+                <div>
+                  <label for="widthWithObjectCm">Largeur (cm)</label>
+                  <input
+                    id="widthWithObjectCm"
+                    v-model.number="form.widthWithObjectCm"
+                    type="number"
+                    step="0.1"
+                  />
+                </div>
+              </div>
+            </div>
+
+
             <!-- Exposition Number -->
             <div class="form-group">
               <label for="expositionNumber">Numéro exposition</label>
@@ -201,6 +226,134 @@
               </div>
             </div>
 
+            <!-- Showcase -->
+            <div class="form-group">
+              <label for="showcase">En vitrine/hors vitrine</label>
+              <select
+                id="showcase"
+                v-model="form.showcase"
+                class="form-select"
+              >
+                <option :value="null">-</option>
+                <option :value="true">En vitrine</option>
+                <option :value="false">Hors vitrine</option>
+              </select>
+            </div>
+
+            <!-- Comments -->
+            <div class="form-group">
+              <label for="comments">Commentaires</label>
+              <textarea
+                id="comments"
+                v-model="form.comments"
+                rows="4"
+              ></textarea>
+            </div>
+
+          </div>
+          
+          <!-- Photos Tab -->
+          <div v-show="activeTab === 'photos'" class="tab-content">
+            <div class="photos-section">
+              <div class="form-group">
+                <label for="photoUpload">Ajouter des photos</label>
+                <input
+                  id="photoUpload"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  @change="handlePhotoUpload"
+                  class="photo-input"
+                />
+                <p class="help-text">Vous pouvez sélectionner plusieurs photos à la fois</p>
+              </div>
+
+              <div v-if="(form.photos && form.photos.length > 0) || form.imageUrl" class="photos-grid">
+                <!-- Render uploaded photos first -->
+                <div
+                  v-for="(photo, index) in form.photos"
+                  :key="`photo-${index}`"
+                  class="photo-card"
+                >
+                  <img
+                    :src="photo.url"
+                    :alt="`Photo ${index + 1}`"
+                    class="photo-preview"
+                    @click="openFullscreen(photo.url)"
+                    style="cursor: pointer;"
+                  />
+                  <div class="photo-overlay">
+                    <button
+                      type="button"
+                      @click="removePhoto(index)"
+                      class="remove-photo-btn"
+                      title="Supprimer cette photo"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="photo-info">
+                    <input
+                      v-model="photo.caption"
+                      type="text"
+                      placeholder="Légende de la photo"
+                      class="photo-caption"
+                    />
+                  </div>
+                </div>
+
+                <!-- If there is a legacy single imageUrl, show it as a card too -->
+                <div v-if="form.imageUrl" class="photo-card image-url-card">
+                  <img
+                    :src="form.imageUrl"
+                    alt="Image principale"
+                    class="photo-preview"
+                    @click="openFullscreen(form.imageUrl)"
+                    style="cursor: pointer;"
+                  />
+                  <div class="photo-overlay">
+                    <button
+                      type="button"
+                      @click="removePhoto(null, true)"
+                      class="remove-photo-btn"
+                      title="Supprimer cette photo"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="photo-info">
+                    <div class="photo-caption-container">
+                      <input
+                        v-model="form.imageUrlCaption"
+                        type="text"
+                        placeholder="Légende de l'image principale"
+                        class="photo-caption"
+                      />
+                      <button
+                        type="button"
+                        @click="removeMainImage"
+                        class="delete-main-image-btn"
+                        title="Supprimer l'image"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else class="empty-photos">
+                <p>Aucune photo ajoutée pour ce socle</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Advanced Information Tab -->
+          <div v-show="activeTab === 'advanced'" class="tab-content">
             <!-- Reserved -->
             <div class="form-group checkbox-group">
               <label class="checkbox-label">
@@ -237,113 +390,36 @@
               </label>
             </div>
 
-            <!-- Showcase -->
+            <!-- Number of Elements -->
             <div class="form-group">
-              <label for="showcase">En vitrine/hors vitrine</label>
-              <select
-                id="showcase"
-                v-model="form.showcase"
-                class="form-select"
-              >
-                <option :value="null">-</option>
-                <option :value="true">En vitrine</option>
-                <option :value="false">Hors vitrine</option>
-              </select>
+              <label for="numberOfElements">Nb d'éléments composant le socle</label>
+              <input
+                id="numberOfElements"
+                v-model="form.numberOfElements"
+                type="text"
+              />
             </div>
-            
+
+            <!-- Adjustable Height -->
+            <div class="form-group checkbox-group">
+              <label class="checkbox-label">
+                <input
+                  id="adjustableHeight"
+                  v-model="form.adjustableHeight"
+                  type="checkbox"
+                />
+                <span>Hauteur du socle réglable</span>
+              </label>
+            </div>
+
             <!-- Comments -->
             <div class="form-group">
-              <label for="comments">Commentaires</label>
+              <label for="comments-advanced">Commentaires</label>
               <textarea
-                id="comments"
+                id="comments-advanced"
                 v-model="form.comments"
                 rows="4"
               ></textarea>
-            </div>
-          </div>
-          
-          <!-- Photos Tab -->
-          <div v-show="activeTab === 'photos'" class="tab-content">
-            <div class="photos-section">
-              <div class="form-group">
-                <label for="photoUpload">Ajouter des photos</label>
-                <input
-                  id="photoUpload"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  @change="handlePhotoUpload"
-                  class="photo-input"
-                />
-                <p class="help-text">Vous pouvez sélectionner plusieurs photos à la fois</p>
-              </div>
-
-              <div v-if="(form.photos && form.photos.length > 0) || form.imageUrl" class="photos-grid">
-                <!-- Render uploaded photos first -->
-                <div
-                  v-for="(photo, index) in form.photos"
-                  :key="`photo-${index}`"
-                  class="photo-card"
-                >
-                  <img :src="photo.url" :alt="`Photo ${index + 1}`" class="photo-preview" />
-                  <div class="photo-overlay">
-                    <button
-                      type="button"
-                      @click="removePhoto(index)"
-                      class="remove-photo-btn"
-                      title="Supprimer cette photo"
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                      </svg>
-                    </button>
-                  </div>
-                  <div class="photo-info">
-                    <input
-                      v-model="photo.caption"
-                      type="text"
-                      placeholder="Légende de la photo"
-                      class="photo-caption"
-                    />
-                  </div>
-                </div>
-
-                <!-- If there is a legacy single imageUrl, show it as a card too -->
-                <div v-if="form.imageUrl" class="photo-card image-url-card">
-                  <img :src="form.imageUrl" alt="Image principale" class="photo-preview" />
-                  <div class="photo-overlay">
-                    <button
-                      type="button"
-                      @click="removePhoto(null, true)"
-                      class="remove-photo-btn"
-                      title="Supprimer cette photo"
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                      </svg>
-                    </button>
-                  </div>
-                  <div class="photo-info">
-                    <input
-                      v-model="form.imageUrlCaption"
-                      type="text"
-                      placeholder="Légende de l'image principale"
-                      class="photo-caption"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div v-else class="empty-photos">
-                <p>Aucune photo ajoutée pour ce socle</p>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Advanced Information Tab -->
-          <div v-show="activeTab === 'advanced'" class="tab-content">
-            <div class="empty-tab">
-              <p>Informations avancées à venir</p>
             </div>
           </div>
           
@@ -353,11 +429,13 @@
               Annuler
             </button>
             <button type="button" @click.prevent="generateQRCodePdf" :disabled="generateInProgress" class="generate-qr-button">
-              <span v-if="!generateInProgress">Générer un QR code</span>
+              <span v-if="!generateInProgress">
+                <img src="/qrcode.png" alt="QR code" class="qr-icon" />
+              </span>
               <span v-else class="qr-loading"><svg class="spinner" viewBox="0 0 50 50" width="16" height="16"><circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="4"></circle></svg> Génération…</span>
             </button>
             <button type="submit" class="primary save-button">
-              {{ isEditing ? 'Enregistrer les modifications' : 'Créer le socle' }}
+              {{ isEditing ? 'Enregistrer' : 'Créer le socle' }}
             </button>
           </div>
         </form>
@@ -379,19 +457,29 @@
       </div>
     </div>
 
-    <footer class="app-footer">
-      <img src="/images/logo-musee-quai-branly.png" alt="Musée du Quai Branly Jacques Chirac" class="footer-logo" />
-      <div class="footer-credit">
-        Développé par <a href="https://www.ideesculture.com" target="_blank" rel="noopener noreferrer">IdéesCulture</a>
+    <!-- Fullscreen Image Viewer -->
+    <div v-if="showFullscreen" class="fullscreen-viewer" @click.self="closeFullscreen">
+      <button class="fullscreen-close" @click="closeFullscreen" aria-label="Fermer">✕</button>
+      <div class="fullscreen-content">
+        <img
+          ref="fullscreenImage"
+          :src="fullscreenImageUrl"
+          alt="Image en plein écran"
+          :style="{ transform: `scale(${zoomLevel})` }"
+        />
       </div>
-    </footer>
+    </div>
+
+    <AppFooter />
   </div>
 </template>
 
 <script>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { soclesDB, expositionsDB, settingsDB } from '../services/db'
+import { soclesDB, expositionsDB } from '../services/db'
+import AppHeader from '../components/AppHeader.vue'
+import AppFooter from '../components/AppFooter.vue'
 import QRScanner from '../components/QRScanner.vue'
 import { jsPDF } from 'jspdf'
 import QRCode from 'qrcode'
@@ -399,6 +487,8 @@ import QRCode from 'qrcode'
 export default {
   name: 'SocleFormView',
   components: {
+    AppHeader,
+    AppFooter,
     QRScanner
   },
   setup() {
@@ -410,6 +500,15 @@ export default {
     const showExpoModal = ref(false)
     const expoIframeSrc = '/expositions/new?embedded=1'
     const showQRScanner = ref(false)
+
+    // Fullscreen image viewer
+    const showFullscreen = ref(false)
+    const fullscreenImageUrl = ref('')
+    const fullscreenImage = ref(null)
+    const zoomLevel = ref(1)
+    const minZoom = 0.5
+    const maxZoom = 5
+    const zoomStep = 0.2
 
     const tabs = [
       { id: 'main', label: 'Champs principaux' },
@@ -424,6 +523,9 @@ export default {
       heightCm: null,
       lengthCm: null,
       widthCm: null,
+      heightWithObjectCm: null,
+      lengthWithObjectCm: null,
+      widthWithObjectCm: null,
       expositionNumber: '',
       function: '',
       instructions: '',
@@ -435,6 +537,8 @@ export default {
       antiSeismic: false,
       doNotAdapt: false,
       showcase: null,
+      numberOfElements: '',
+      adjustableHeight: false,
       comments: '',
       photos: [],
       // legacy single image field (demo data uses imageUrl) and optional caption
@@ -576,6 +680,98 @@ export default {
       }
     }
 
+    // Remove main image (direct function for the X button)
+    const removeMainImage = () => {
+      if (!confirm('Êtes-vous sûr de vouloir supprimer cette image ?')) return
+      form.value.imageUrl = ''
+      form.value.imageUrlCaption = ''
+    }
+
+    // Fullscreen image viewer functions
+    const openFullscreen = (imageUrl) => {
+      fullscreenImageUrl.value = imageUrl
+      showFullscreen.value = true
+      zoomLevel.value = 1
+      // Add event listeners for keyboard and touch events
+      document.addEventListener('keydown', handleKeyboardZoom)
+      document.addEventListener('wheel', handleWheelZoom, { passive: false })
+      if (fullscreenImage.value) {
+        fullscreenImage.value.addEventListener('touchstart', handleTouchStart, { passive: false })
+        fullscreenImage.value.addEventListener('touchmove', handleTouchMove, { passive: false })
+      }
+    }
+
+    const closeFullscreen = () => {
+      showFullscreen.value = false
+      fullscreenImageUrl.value = ''
+      zoomLevel.value = 1
+      // Remove event listeners
+      document.removeEventListener('keydown', handleKeyboardZoom)
+      document.removeEventListener('wheel', handleWheelZoom)
+      if (fullscreenImage.value) {
+        fullscreenImage.value.removeEventListener('touchstart', handleTouchStart)
+        fullscreenImage.value.removeEventListener('touchmove', handleTouchMove)
+      }
+    }
+
+    // Keyboard zoom: CTRL + / CTRL -
+    const handleKeyboardZoom = (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === '+' || e.key === '=') {
+          e.preventDefault()
+          zoomLevel.value = Math.min(maxZoom, zoomLevel.value + zoomStep)
+        } else if (e.key === '-' || e.key === '_') {
+          e.preventDefault()
+          zoomLevel.value = Math.max(minZoom, zoomLevel.value - zoomStep)
+        }
+      } else if (e.key === 'Escape') {
+        closeFullscreen()
+      }
+    }
+
+    // Mouse wheel zoom
+    const handleWheelZoom = (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        if (e.deltaY < 0) {
+          zoomLevel.value = Math.min(maxZoom, zoomLevel.value + zoomStep)
+        } else {
+          zoomLevel.value = Math.max(minZoom, zoomLevel.value - zoomStep)
+        }
+      }
+    }
+
+    // Touch events for pinch zoom
+    let touchDistance = 0
+    let initialZoom = 1
+
+    const handleTouchStart = (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault()
+        const touch1 = e.touches[0]
+        const touch2 = e.touches[1]
+        touchDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        )
+        initialZoom = zoomLevel.value
+      }
+    }
+
+    const handleTouchMove = (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault()
+        const touch1 = e.touches[0]
+        const touch2 = e.touches[1]
+        const newDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        )
+        const scale = newDistance / touchDistance
+        zoomLevel.value = Math.min(maxZoom, Math.max(minZoom, initialZoom * scale))
+      }
+    }
+
     // QR Scanner functions
     const openQRScanner = () => {
       showQRScanner.value = true
@@ -595,17 +791,6 @@ export default {
       } else {
         alert('Aucun socle trouvé avec ce numéro d\'inventaire')
       }
-    }
-
-    // Logout
-    const handleLogout = async () => {
-      await settingsDB.set('isAuthenticated', false)
-      router.push({ name: 'Login' })
-    }
-
-    // Navigate to home
-    const goHome = () => {
-      router.push({ name: 'Home' })
     }
 
     // Clean up message listener when component unmounts
@@ -687,11 +872,17 @@ export default {
       goBack,
       handlePhotoUpload,
       removePhoto,
+      removeMainImage,
       openQRScanner,
       closeQRScanner,
       handleQRScan,
-      handleLogout,
-      goHome
+      // Fullscreen viewer
+      showFullscreen,
+      fullscreenImageUrl,
+      fullscreenImage,
+      zoomLevel,
+      openFullscreen,
+      closeFullscreen
     }
   }
 }
@@ -701,111 +892,6 @@ export default {
 .socle-form-view {
   min-height: 100vh;
   background: linear-gradient(180deg, #a5b4fc 0%, #3b5bdb 100%);
-}
-
-.app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-lg) var(--spacing-xl);
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  color: #000;
-  flex: 0 0 auto;
-}
-
-.logo-image {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
-}
-
-.logo h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-  letter-spacing: 0.05em;
-}
-
-.museum-name {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  justify-content: center;
-}
-
-.museum-logo {
-  height: 40px;
-  object-fit: contain;
-}
-
-.header-actions {
-  display: flex;
-  gap: var(--spacing-md);
-  align-items: center;
-  flex: 0 0 auto;
-}
-
-.qr-button {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: #f3f4f6;
-  color: var(--color-text);
-  border: 1px solid #e5e7eb;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background 0.2s;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.qr-button:hover {
-  background: #e5e7eb;
-}
-
-.qr-button img {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-}
-
-.logout-button {
-  background: #f3f4f6;
-  color: var(--color-text);
-  border: 1px solid #e5e7eb;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background 0.2s;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.logout-button:hover {
-  background: #e5e7eb;
-}
-
-/* Responsive Header */
-@media (max-width: 768px) {
-  .logo h1 {
-    display: none;
-  }
-
-  .museum-logo {
-    max-width: 140px;
-  }
-
-  .header-actions {
-    gap: var(--spacing-xs);
-  }
 }
 
 .container {
@@ -1233,8 +1319,21 @@ input:checked + .slider:before {
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .generate-qr-button:hover { background: #1e40af }
+.generate-qr-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.qr-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
 
 .qr-loading {
   display: inline-flex;
@@ -1247,6 +1346,12 @@ input:checked + .slider:before {
 .spinner .path {
   stroke: white;
   stroke-linecap: round;
+}
+
+.dimensions-grid {
+	border-left: 2px solid lightgray;
+    padding-left: 10px;
+	gap: 0.4em;
 }
 @keyframes spin {
   100% { transform: rotate(360deg); }
@@ -1265,35 +1370,136 @@ input:checked + .slider:before {
     flex-direction: column;
     align-items: stretch;
   }
+
+  .container {
+	padding: var(--spacing-sm) 0;
+  }
+  .form-group,
+  .draft-toggle {
+	margin-bottom: var(--spacing-sm);
+  }
+  label {
+	font-size: 0.8rem;
+	margin-bottom: 2px;
+  }
+
+  .form-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .cancel-button,
+  .generate-qr-button,
+  .save-button {
+    flex: 1;
+    min-width: 80px;
+  }
+
+  input, select, select.form-select {
+	padding: 6px 8px;
+  }
+
 }
 
-.app-footer {
-  background: white;
-  padding: var(--spacing-lg);
+/* Photo caption container with delete button */
+.photo-caption-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
   gap: var(--spacing-sm);
-  border-top: 1px solid #e5e7eb;
+  align-items: center;
 }
 
-.footer-logo {
-  height: 40px;
+.photo-caption-container .photo-caption {
+  flex: 1;
+}
+
+.delete-main-image-btn {
+  background: #dc2626;
+  color: white;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.delete-main-image-btn:hover {
+  background: #b91c1c;
+}
+
+/* Fullscreen image viewer */
+.fullscreen-viewer {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.fullscreen-content {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  overflow: auto;
+  padding: 40px;
+}
+
+.fullscreen-content img {
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
+  transition: transform 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-x pan-y pinch-zoom;
 }
 
-.footer-credit {
-  font-size: 12px;
-  color: var(--color-text-secondary);
+.fullscreen-close {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: transparent;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 40px;
+  font-weight: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 2001;
+  padding: 10px;
 }
 
-.footer-credit a {
-  color: #3b82f6;
-  text-decoration: none;
-  font-weight: 500;
+.fullscreen-close:hover {
+  transform: scale(1.2);
+  opacity: 0.8;
 }
 
-.footer-credit a:hover {
-  text-decoration: underline;
+@media (max-width: 768px) {
+  .fullscreen-content {
+    padding: 20px;
+  }
+
+  .fullscreen-close {
+    top: 10px;
+    right: 10px;
+    font-size: 32px;
+    padding: 8px;
+  }
 }
 </style>

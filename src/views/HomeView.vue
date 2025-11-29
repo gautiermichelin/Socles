@@ -1,23 +1,6 @@
 <template>
   <div class="home-view">
-    <header class="app-header">
-      <div class="logo" @click="goHome" style="cursor: pointer;">
-        <img src="/images/logo.png" alt="Logo Socles" class="logo-image" />
-        <h1>SOCLES</h1>
-      </div>
-      <div class="museum-name">
-        <img src="/images/logo-musee-quai-branly.png" alt="Musée du Quai Branly Jacques Chirac" class="museum-logo" />
-      </div>
-      <div class="header-actions">
-        <button @click="openQRScanner" class="qr-button">
-          <img src="/qrcode.png" alt="QR code" />
-          QR code
-        </button>
-        <button @click="handleLogout" class="logout-button">
-          Déconnexion
-        </button>
-      </div>
-    </header>
+    <AppHeader @open-qr-scanner="openQRScanner" />
 
     <QRScanner
       v-if="showQRScanner"
@@ -120,25 +103,23 @@
       </section>
     </main>
 
-    <!-- Footer -->
-    <footer class="app-footer">
-      <img src="/images/logo-musee-quai-branly.png" alt="Musée du Quai Branly Jacques Chirac" class="footer-logo" />
-      <div class="footer-credit">
-        Développé par <a href="https://www.ideesculture.com" target="_blank" rel="noopener noreferrer">IdéesCulture</a>
-      </div>
-    </footer>
+    <AppFooter />
   </div>
 </template>
 
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { expositionsDB, soclesDB, settingsDB } from '../services/db'
+import { expositionsDB, soclesDB } from '../services/db'
+import AppHeader from '../components/AppHeader.vue'
+import AppFooter from '../components/AppFooter.vue'
 import QRScanner from '../components/QRScanner.vue'
 
 export default {
   name: 'HomeView',
   components: {
+    AppHeader,
+    AppFooter,
     QRScanner
   },
   setup() {
@@ -222,15 +203,6 @@ export default {
       router.push({ name: 'ExpositionEdit', params: { id: expo.id } })
     }
 
-    const goHome = () => {
-      router.push({ name: 'Home' })
-    }
-
-    const handleLogout = async () => {
-      await settingsDB.set('isAuthenticated', false)
-      router.push({ name: 'Login' })
-    }
-
     // Convert hex color to rgba with opacity
     const getColorWithOpacity = (hexColor) => {
       if (!hexColor) return 'rgba(0, 0, 0, 0.6)'
@@ -281,8 +253,6 @@ export default {
       addCaisse,
       viewSocle,
       viewExpo,
-      goHome,
-      handleLogout,
       getColorWithOpacity
     }
   }
@@ -295,111 +265,8 @@ export default {
   background: #f5f5f5;
 }
 
-/* Header Styles - Same as SoclesListView */
-.app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-lg) var(--spacing-xl);
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  color: #000;
-  flex: 0 0 auto;
-}
-
-.logo-image {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
-}
-
-.logo h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-  letter-spacing: 0.05em;
-}
-
-.museum-name {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  justify-content: center;
-}
-
-.museum-logo {
-  height: 40px;
-  object-fit: contain;
-}
-
-.header-actions {
-  display: flex;
-  gap: var(--spacing-md);
-  align-items: center;
-  flex: 0 0 auto;
-}
-
-.qr-button {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: #f3f4f6;
-  color: var(--color-text);
-  border: 1px solid #e5e7eb;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background 0.2s;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.qr-button:hover {
-  background: #e5e7eb;
-}
-
-.qr-button img {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-}
-
-.logout-button {
-  background: #f3f4f6;
-  color: var(--color-text);
-  border: 1px solid #e5e7eb;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background 0.2s;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.logout-button:hover {
-  background: #e5e7eb;
-}
-
 /* Responsive Header */
 @media (max-width: 768px) {
-  .logo h1 {
-    display: none;
-  }
-
-  .museum-logo {
-    max-width: 140px;
-  }
-
-  .header-actions {
-    gap: var(--spacing-xs);
-  }
-
   /* Hero Section Mobile */
   .hero-star {
     width: 50%;
@@ -628,8 +495,8 @@ export default {
 }
 
 .socle-card img {
-  width: 100%;
-  height: 250px;
+  width: 105%;
+  height: 105%;
   object-fit: cover;
 }
 
@@ -740,37 +607,5 @@ export default {
 
 .section-action-btn.secondary:hover {
   background: #eff6ff;
-}
-
-/* Footer */
-.app-footer {
-  background: white;
-  padding: var(--spacing-xl);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: var(--spacing-sm);
-  border-top: 1px solid #e5e7eb;
-}
-
-.footer-logo {
-  height: 40px;
-  object-fit: contain;
-}
-
-.footer-credit {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-
-.footer-credit a {
-  color: #3b82f6;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.footer-credit a:hover {
-  text-decoration: underline;
 }
 </style>

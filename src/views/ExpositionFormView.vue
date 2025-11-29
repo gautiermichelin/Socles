@@ -1,23 +1,6 @@
 <template>
   <div class="exposition-form-view">
-    <header v-if="!isEmbedded" class="app-header">
-      <div class="logo" @click="goHome" style="cursor: pointer;">
-        <img src="/images/logo.png" alt="Logo Socles" class="logo-image" />
-        <h1>SOCLES</h1>
-      </div>
-      <div class="museum-name">
-        <img src="/images/logo-musee-quai-branly.png" alt="Musée du Quai Branly Jacques Chirac" class="museum-logo" />
-      </div>
-      <div class="header-actions">
-        <button @click="openQRScanner" class="qr-button">
-          <img src="/qrcode.png" alt="QR code" />
-          QR code
-        </button>
-        <button @click="handleLogout" class="logout-button">
-          Déconnexion
-        </button>
-      </div>
-    </header>
+    <AppHeader v-if="!isEmbedded" @open-qr-scanner="openQRScanner" />
 
     <div class="container">
       <div class="form-header">
@@ -98,7 +81,18 @@
 
           <!-- Image Upload -->
           <div class="form-group">
-            <label for="image">Image</label>
+            <div class="label-with-delete">
+              <label for="image">Image</label>
+              <button
+                v-if="form.imageUrl"
+                type="button"
+                @click="removeImage"
+                class="delete-image-btn"
+                title="Supprimer l'image"
+              >
+                ✕
+              </button>
+            </div>
             <div v-if="form.imageUrl" class="image-preview">
               <img :src="form.imageUrl" alt="Preview" />
             </div>
@@ -123,22 +117,23 @@
       </div>
     </div>
 
-    <footer v-if="!isEmbedded" class="app-footer">
-      <img src="/images/logo-musee-quai-branly.png" alt="Musée du Quai Branly Jacques Chirac" class="footer-logo" />
-      <div class="footer-credit">
-        Développé par <a href="https://www.ideesculture.com" target="_blank" rel="noopener noreferrer">IdéesCulture</a>
-      </div>
-    </footer>
+    <AppFooter v-if="!isEmbedded" />
   </div>
 </template>
 
 <script>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { expositionsDB, settingsDB } from '../services/db'
+import { expositionsDB } from '../services/db'
+import AppHeader from '../components/AppHeader.vue'
+import AppFooter from '../components/AppFooter.vue'
 
 export default {
   name: 'ExpositionFormView',
+  components: {
+    AppHeader,
+    AppFooter
+  },
   props: {
     id: {
       type: String,
@@ -190,6 +185,13 @@ export default {
       }
     }
 
+    // Remove image
+    const removeImage = () => {
+      if (confirm('Êtes-vous sûr de vouloir supprimer cette image ?')) {
+        form.value.imageUrl = ''
+      }
+    }
+
     // Handle form submission
     const handleSubmit = async () => {
       try {
@@ -227,25 +229,15 @@ export default {
       console.log('Open QR scanner')
     }
 
-    const handleLogout = async () => {
-      await settingsDB.set('isAuthenticated', false)
-      router.push({ name: 'Login' })
-    }
-
-    const goHome = () => {
-      router.push({ name: 'Home' })
-    }
-
     return {
       form,
       isEditing,
       isEmbedded,
       handleSubmit,
       handleImageUpload,
+      removeImage,
       goBack,
-      openQRScanner,
-      handleLogout,
-      goHome
+      openQRScanner
     }
   }
 }
@@ -255,112 +247,6 @@ export default {
 .exposition-form-view {
   min-height: 100vh;
   background: linear-gradient(180deg, #a5b4fc 0%, #3b5bdb 100%);
-}
-
-/* Header - Same as SoclesListView */
-.app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-lg) var(--spacing-xl);
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  color: #000;
-  flex: 0 0 auto;
-}
-
-.logo-image {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
-}
-
-.logo h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-  letter-spacing: 0.05em;
-}
-
-.museum-name {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  justify-content: center;
-}
-
-.museum-logo {
-  height: 40px;
-  object-fit: contain;
-}
-
-.header-actions {
-  display: flex;
-  gap: var(--spacing-md);
-  align-items: center;
-  flex: 0 0 auto;
-}
-
-.qr-button {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: #f3f4f6;
-  color: var(--color-text);
-  border: 1px solid #e5e7eb;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background 0.2s;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.qr-button:hover {
-  background: #e5e7eb;
-}
-
-.qr-button img {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-}
-
-.logout-button {
-  background: #f3f4f6;
-  color: var(--color-text);
-  border: 1px solid #e5e7eb;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background 0.2s;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.logout-button:hover {
-  background: #e5e7eb;
-}
-
-/* Responsive Header */
-@media (max-width: 768px) {
-  .logo h1 {
-    display: none;
-  }
-
-  .museum-logo {
-    max-width: 140px;
-  }
-
-  .header-actions {
-    gap: var(--spacing-xs);
-  }
 }
 
 .container {
@@ -490,33 +376,35 @@ export default {
   background: #f3f4f6;
 }
 
-.app-footer {
-  background: white;
-  padding: var(--spacing-lg);
+.label-with-delete {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  gap: var(--spacing-sm);
-  border-top: 1px solid #e5e7eb;
+  margin-bottom: var(--spacing-sm);
 }
 
-.footer-logo {
-  height: 40px;
-  object-fit: contain;
+.label-with-delete label {
+  margin-bottom: 0;
 }
 
-.footer-credit {
-  font-size: 12px;
-  color: var(--color-text-secondary);
+.delete-image-btn {
+  background: #6b7280;
+  color: white;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  padding: 0;
 }
 
-.footer-credit a {
-  color: #3b82f6;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.footer-credit a:hover {
-  text-decoration: underline;
+.delete-image-btn:hover {
+  background: #4b5563;
 }
 </style>
