@@ -27,7 +27,17 @@
         />
       </div>
 
-      <div class="filter-bar">
+      <button @click="toggleFilters" class="toggle-filters-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 4h18M3 12h12M3 20h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        Filtrer
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" :style="{ transform: showFilters ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }">
+          <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <div v-show="showFilters" class="filter-bar">
         <label for="exposition-filter">Exposition:</label>
         <select
           id="exposition-filter"
@@ -97,7 +107,13 @@
             </div>
 
             <div class="card-header">
-              <h3>{{ socle.inventoryNumber || 'Sans numéro' }}</h3>
+              <h3>
+                <span
+                  class="inventory-badge"
+                  :class="getTypologyColor(socle.typography)"
+                ></span>
+                {{ socle.inventoryNumber || 'Sans numéro' }}
+              </h3>
               <span v-if="socle.isDraft" class="draft-badge">Brouillon</span>
             </div>
 
@@ -248,6 +264,7 @@ export default {
     let aggressiveInitInProgress = false
     const loading = ref(true)
     const showQRScanner = ref(false)
+    const showFilters = ref(true) // Show filters by default on desktop, will be hidden on mobile
     
 
     // Load socles from database
@@ -515,7 +532,38 @@ export default {
         alert('Une erreur est survenue lors de la suppression')
       }
     }
-    
+
+    // Get typology color for badge
+    const getTypologyColor = (typography) => {
+      if (!typography) return ''
+
+      const normalizedType = typography.toLowerCase().trim()
+
+      // Blue for "Morpho piqué fond"
+      if (normalizedType === 'morpho piqué fond') {
+        return 'badge-blue'
+      }
+
+      // Green for other typologies
+      const greenTypes = [
+        'morpho piqué base',
+        'morpho sur platine',
+        'piqué base',
+        'soclet'
+      ]
+
+      if (greenTypes.some(type => normalizedType === type.toLowerCase())) {
+        return 'badge-green'
+      }
+
+      return ''
+    }
+
+    // Toggle filters visibility
+    const toggleFilters = () => {
+      showFilters.value = !showFilters.value
+    }
+
     // QR Scanner functions
     const openQRScanner = () => {
       showQRScanner.value = true
@@ -692,6 +740,11 @@ export default {
       loadSocles()
       // start aggressive initialization in case DataTables loads late under Vite HMR
       startAggressiveInit()
+
+      // Hide filters by default on mobile
+      if (window.innerWidth <= 768) {
+        showFilters.value = false
+      }
     })
 
     onUnmounted(() => {
@@ -728,10 +781,13 @@ export default {
       loading,
       filteredSocles,
       showQRScanner,
+      showFilters,
+      toggleFilters,
       formatDate,
       goToCreate,
       goToEdit,
       deleteSocle,
+      getTypologyColor,
       openQRScanner,
       closeQRScanner,
       handleQRScan,
@@ -783,6 +839,30 @@ export default {
   border: none;
   border-radius: var(--radius-lg);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-filters-btn {
+  display: none;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: white;
+  color: var(--color-text);
+  border: 1px solid #e5e7eb;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: var(--spacing-md);
+  width: 100%;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.toggle-filters-btn:hover {
+  background: #f3f4f6;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .filter-bar {
@@ -899,6 +979,25 @@ export default {
   margin: 0;
   font-size: 1.25rem;
   color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.inventory-badge {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.inventory-badge.badge-blue {
+  background-color: #3b82f6;
+}
+
+.inventory-badge.badge-green {
+  background-color: #10b981;
 }
 
 .draft-badge {
@@ -1015,5 +1114,42 @@ export default {
   justify-content: flex-start;
 }
 
+/* Responsive for mobile */
+@media (max-width: 768px) {
+  .toggle-filters-btn {
+    display: flex;
+  }
 
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-sm);
+  }
+
+  .filter-bar label {
+    margin-bottom: 4px;
+  }
+
+  .exposition-select,
+  .typologie-select {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .view-toggle {
+    width: 100%;
+    justify-content: center !important;
+  }
+
+  .export-button {
+    width: 100%;
+  }
+}
+
+.card-body .card-field {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
 </style>

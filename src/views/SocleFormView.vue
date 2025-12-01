@@ -55,7 +55,17 @@
                 type="text"
               />
             </div>
-            
+
+            <!-- Object Title -->
+            <div class="form-group">
+              <label for="objectTitle">Titre de l'objet</label>
+              <input
+                id="objectTitle"
+                v-model="form.objectTitle"
+                type="text"
+              />
+            </div>
+
             <!-- Typography -->
             <div class="form-group">
               <label for="typography">Typologie</label>
@@ -100,6 +110,15 @@
                   <input
                     id="widthCm"
                     v-model.number="form.widthCm"
+                    type="number"
+                    step="0.1"
+                  />
+                </div>
+                <div>
+                  <label for="rodDiameterCm">Diamètre tige (cm)</label>
+                  <input
+                    id="rodDiameterCm"
+                    v-model.number="form.rodDiameterCm"
                     type="number"
                     step="0.1"
                   />
@@ -519,10 +538,12 @@ export default {
     const form = ref({
       isDraft: false,
       inventoryNumber: '',
+      objectTitle: '',
       typography: '',
       heightCm: null,
       lengthCm: null,
       widthCm: null,
+      rodDiameterCm: null,
       heightWithObjectCm: null,
       lengthWithObjectCm: null,
       widthWithObjectCm: null,

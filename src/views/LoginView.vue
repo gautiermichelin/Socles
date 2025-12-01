@@ -14,8 +14,13 @@
         Veuillez saisir votre adresse email<br>
         et votre mot de passe pour vous connecter
       </p>
-      
-      <form @submit.prevent="handleLogin">
+
+      <div v-if="serviceUnavailable" class="service-error">
+        <strong>Erreur : service web indisponible</strong><br>
+        Merci de contacter <a href="mailto:contact@ideesculture.com">contact@ideesculture.com</a>
+      </div>
+
+      <form @submit.prevent="handleLogin" :class="{ disabled: serviceUnavailable }">
         <div class="form-group">
           <label for="email">Adresse email</label>
           <input
@@ -25,9 +30,10 @@
             required
             autocomplete="email"
             placeholder=""
+            :disabled="serviceUnavailable"
           />
         </div>
-        
+
         <div class="form-group">
           <label for="password">Mot de passe</label>
           <input
@@ -37,6 +43,7 @@
             required
             autocomplete="current-password"
             placeholder=""
+            :disabled="serviceUnavailable"
           />
         </div>
         
@@ -52,7 +59,7 @@
           {{ errorMessage }}
         </div>
         
-        <button type="submit" class="primary login-button">
+        <button type="submit" class="primary login-button" :disabled="serviceUnavailable">
           Connexion
         </button>
       </form>
@@ -71,7 +78,9 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { usersDB, settingsDB, initDemoData } from '../services/db'
+import { settingsDB, initDemoData } from '../services/db'
+
+const API_BASE_URL = 'https://socles.ideesculture.fr/gestion/soclesIo/index.php'
 
 export default {
   name: 'LoginView',
@@ -81,26 +90,85 @@ export default {
     const password = ref('')
     const rememberEmail = ref(false)
     const errorMessage = ref('')
-    
+    const serviceUnavailable = ref(false)
+
+    // Test webservice availability
+    const checkWebServiceAvailability = async () => {
+      try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+
+        const formData = new FormData()
+        formData.append('action', 'get_server_time')
+
+        const response = await fetch(API_BASE_URL, {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal
+        })
+
+        clearTimeout(timeoutId)
+
+        if (!response.ok) {
+          throw new Error('Service unavailable')
+        }
+
+        const data = await response.json()
+
+        if (data.result !== true) {
+          throw new Error('Service check failed')
+        }
+
+        serviceUnavailable.value = false
+        return true
+      } catch (error) {
+        console.error('Webservice availability check failed:', error)
+        serviceUnavailable.value = true
+        return false
+      }
+    }
+
     // Load saved email on mount
     onMounted(async () => {
       // Initialize demo data
       await initDemoData()
-      
+
+      // Check webservice availability
+      await checkWebServiceAvailability()
+
       const savedEmail = await settingsDB.get('savedEmail')
       if (savedEmail) {
         email.value = savedEmail
         rememberEmail.value = true
       }
     })
-    
+
     const handleLogin = async () => {
       errorMessage.value = ''
 
-      try {
-        const isValid = await usersDB.authenticate(email.value, password.value)
+      if (serviceUnavailable.value) {
+        return
+      }
 
-        if (isValid) {
+      try {
+        // Send POST request to webservice
+        const formData = new FormData()
+        formData.append('action', 'auth')
+        formData.append('username', email.value)
+        formData.append('password', password.value)
+
+        const response = await fetch(API_BASE_URL, {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error('Network response was not ok')
+        }
+
+        const data = await response.json()
+
+        if (data.result === true) {
           // Save authentication state
           await settingsDB.set('isAuthenticated', true)
           await settingsDB.set('currentUser', email.value)
@@ -115,7 +183,7 @@ export default {
           // Redirect to home page
           router.push({ name: 'Home' })
         } else {
-          errorMessage.value = 'Email ou mot de passe incorrect'
+          errorMessage.value = data.message || 'Email ou mot de passe incorrect'
         }
       } catch (error) {
         console.error('Login error:', error)
@@ -128,6 +196,7 @@ export default {
       password,
       rememberEmail,
       errorMessage,
+      serviceUnavailable,
       handleLogin
     }
   }

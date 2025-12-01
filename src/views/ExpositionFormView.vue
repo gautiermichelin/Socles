@@ -79,6 +79,28 @@
             />
           </div>
 
+          <!-- Comments -->
+          <div class="form-group">
+            <label for="comments">Commentaires</label>
+            <textarea
+              id="comments"
+              v-model="form.comments"
+              rows="4"
+              placeholder="Commentaires sur l'exposition..."
+            ></textarea>
+          </div>
+
+          <!-- Contact/Exhibition Manager -->
+          <div class="form-group">
+            <label for="exhibitionContact">Contact/chargé d'exposition</label>
+            <input
+              id="exhibitionContact"
+              v-model="form.exhibitionContact"
+              type="text"
+              placeholder="Nom du contact"
+            />
+          </div>
+
           <!-- Image Upload -->
           <div class="form-group">
             <div class="label-with-delete">
@@ -160,6 +182,8 @@ export default {
       endDate: '',
       location: '',
       color: '#3b82f6',
+      comments: '',
+      exhibitionContact: '',
       imageUrl: ''
     })
 
@@ -304,12 +328,19 @@ export default {
 }
 
 .form-group input[type="text"],
-.form-group input[type="color"] {
+.form-group input[type="color"],
+.form-group textarea {
   width: 100%;
   padding: var(--spacing-md);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: 1rem;
+  font-family: inherit;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 100px;
 }
 
 .form-group input[type="color"] {
