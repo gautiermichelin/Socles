@@ -216,25 +216,68 @@ export default {
       }
     }
 
+    // Upload exposition to webservice
+    const uploadExpoToWebService = async (expoData) => {
+      const API_BASE_URL = 'https://socles.ideesculture.fr/gestion/soclesIo/index.php'
+
+      try {
+        const formData = new FormData()
+        formData.append('action', 'uploadExpo')
+        formData.append('data', JSON.stringify(expoData))
+
+        const response = await fetch(API_BASE_URL, {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error('Network response was not ok')
+        }
+
+        const result = await response.json()
+
+        if (result.result === true) {
+          console.log('Exposition uploaded successfully:', result.file, result.timestamp)
+          return true
+        } else {
+          console.error('Webservice upload error:', result.message)
+          return false
+        }
+      } catch (error) {
+        console.error('Failed to upload exposition to webservice:', error)
+        return false
+      }
+    }
+
     // Handle form submission
     const handleSubmit = async () => {
       try {
+        // Convert Vue proxy to plain object by serializing and deserializing
+        const plainFormData = JSON.parse(JSON.stringify(form.value))
+
+        let savedExpo
         if (isEditing.value) {
-          await expositionsDB.update({
-            ...form.value,
+          const expoToUpdate = {
+            ...plainFormData,
             id: Number(props.id)
-          })
+          }
+          savedExpo = await expositionsDB.update(expoToUpdate)
           // notify parent (iframe) that an exposition was updated
           try {
-            window.parent.postMessage({ type: 'exposition-created', data: { shortTitle: form.value.shortTitle } }, window.location.origin)
+            window.parent.postMessage({ type: 'exposition-created', data: { shortTitle: plainFormData.shortTitle } }, window.location.origin)
           } catch (e) { /* ignore */ }
         } else {
-          await expositionsDB.create(form.value)
+          savedExpo = await expositionsDB.create(plainFormData)
           // notify parent (iframe) that an exposition was created
           try {
-            window.parent.postMessage({ type: 'exposition-created', data: { shortTitle: form.value.shortTitle } }, window.location.origin)
+            window.parent.postMessage({ type: 'exposition-created', data: { shortTitle: plainFormData.shortTitle } }, window.location.origin)
           } catch (e) { /* ignore */ }
         }
+
+        // Upload to webservice (non-blocking, don't wait for result)
+        uploadExpoToWebService(savedExpo).catch(err => {
+          console.warn('Webservice upload failed but local save succeeded:', err)
+        })
 
         router.push({ name: 'ExpositionsList' })
       } catch (error) {

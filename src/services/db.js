@@ -157,28 +157,32 @@ export const expositionsDB = {
   /**
    * Create a new exposition
    * @param {Object} exposition - Exposition data
-   * @returns {Promise<number>} Created exposition ID
+   * @returns {Promise<Object>} Created exposition object with ID
    */
   async create(exposition) {
     const db = await initDB()
-    return db.add(STORES.EXPOSITIONS, {
+    const newExposition = {
       ...exposition,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    })
+    }
+    const id = await db.add(STORES.EXPOSITIONS, newExposition)
+    return { ...newExposition, id }
   },
 
   /**
    * Update an existing exposition
    * @param {Object} exposition - Exposition data with id
-   * @returns {Promise<number>} Updated exposition ID
+   * @returns {Promise<Object>} Updated exposition object
    */
   async update(exposition) {
     const db = await initDB()
-    return db.put(STORES.EXPOSITIONS, {
+    const updatedExposition = {
       ...exposition,
       updatedAt: new Date().toISOString()
-    })
+    }
+    await db.put(STORES.EXPOSITIONS, updatedExposition)
+    return updatedExposition
   },
 
   /**
