@@ -308,6 +308,27 @@ form {
   text-decoration: underline;
 }
 
+.service-error {
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  font-size: 0.95rem;
+  text-align: left;
+  border: 1px solid #fecaca;
+}
+
+.service-error a {
+  color: #991b1b;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.service-error a:hover {
+  color: #7f1d1d;
+}
+
 .error-message {
   background-color: #fee;
   color: #c33;
@@ -317,11 +338,21 @@ form {
   font-size: 0.9rem;
 }
 
+form.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 .login-button {
   width: 100%;
   padding: var(--spacing-md);
   font-size: 1.1rem;
   font-weight: 600;
+}
+
+.login-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Footer */
