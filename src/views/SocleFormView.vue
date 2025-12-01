@@ -647,13 +647,53 @@ export default {
     // Attach message listener
     window.addEventListener('message', onMessage)
     
+    // Upload socle to webservice
+    const uploadSocleToWebService = async (socleData) => {
+      const API_BASE_URL = 'https://socles.ideesculture.fr/gestion/soclesIo/index.php'
+
+      try {
+        const formData = new FormData()
+        formData.append('action', 'uploadSocle')
+        formData.append('data', JSON.stringify(socleData))
+
+        const response = await fetch(API_BASE_URL, {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error('Network response was not ok')
+        }
+
+        const result = await response.json()
+
+        if (result.result === true) {
+          console.log('Socle uploaded successfully:', result.file, result.timestamp)
+          return true
+        } else {
+          console.error('Webservice upload error:', result.message)
+          return false
+        }
+      } catch (error) {
+        console.error('Failed to upload socle to webservice:', error)
+        return false
+      }
+    }
+
     const handleSubmit = async () => {
       try {
+        let savedSocle
         if (isEditing.value) {
-          await soclesDB.update(form.value)
+          savedSocle = await soclesDB.update(form.value)
         } else {
-          await soclesDB.create(form.value)
+          savedSocle = await soclesDB.create(form.value)
         }
+
+        // Upload to webservice (non-blocking, don't wait for result)
+        uploadSocleToWebService(savedSocle || form.value).catch(err => {
+          console.warn('Webservice upload failed but local save succeeded:', err)
+        })
+
         router.push({ name: 'SoclesList' })
       } catch (error) {
         console.error('Error saving socle:', error)
