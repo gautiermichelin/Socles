@@ -682,18 +682,18 @@ export default {
 
     const handleSubmit = async () => {
       try {
+        // Convert Vue proxy to plain object by serializing and deserializing
+        const plainFormData = JSON.parse(JSON.stringify(form.value))
+
         let savedSocle
         if (isEditing.value) {
-          savedSocle = await soclesDB.update(form.value)
+          savedSocle = await soclesDB.update(plainFormData)
         } else {
-          savedSocle = await soclesDB.create(form.value)
+          savedSocle = await soclesDB.create(plainFormData)
         }
 
-        // Create a clean copy of the socle data for upload (without non-serializable objects)
-        const cleanSocleData = JSON.parse(JSON.stringify(savedSocle))
-
         // Upload to webservice (non-blocking, don't wait for result)
-        uploadSocleToWebService(cleanSocleData).catch(err => {
+        uploadSocleToWebService(savedSocle).catch(err => {
           console.warn('Webservice upload failed but local save succeeded:', err)
         })
 
