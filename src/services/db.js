@@ -81,28 +81,32 @@ export const soclesDB = {
   /**
    * Create a new socle
    * @param {Object} socle - Socle data
-   * @returns {Promise<number>} Created socle ID
+   * @returns {Promise<Object>} Created socle object with ID
    */
   async create(socle) {
     const db = await initDB()
-    return db.add(STORES.SOCLES, {
+    const newSocle = {
       ...socle,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    })
+    }
+    const id = await db.add(STORES.SOCLES, newSocle)
+    return { ...newSocle, id }
   },
   
   /**
    * Update an existing socle
    * @param {Object} socle - Socle data with id
-   * @returns {Promise<number>} Updated socle ID
+   * @returns {Promise<Object>} Updated socle object
    */
   async update(socle) {
     const db = await initDB()
-    return db.put(STORES.SOCLES, {
+    const updatedSocle = {
       ...socle,
       updatedAt: new Date().toISOString()
-    })
+    }
+    await db.put(STORES.SOCLES, updatedSocle)
+    return updatedSocle
   },
   
   /**

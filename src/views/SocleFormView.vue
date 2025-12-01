@@ -689,8 +689,11 @@ export default {
           savedSocle = await soclesDB.create(form.value)
         }
 
+        // Create a clean copy of the socle data for upload (without non-serializable objects)
+        const cleanSocleData = JSON.parse(JSON.stringify(savedSocle))
+
         // Upload to webservice (non-blocking, don't wait for result)
-        uploadSocleToWebService(savedSocle || form.value).catch(err => {
+        uploadSocleToWebService(cleanSocleData).catch(err => {
           console.warn('Webservice upload failed but local save succeeded:', err)
         })
 
