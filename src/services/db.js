@@ -128,6 +128,27 @@ export const soclesDB = {
     const db = await initDB()
     const index = db.transaction(STORES.SOCLES).store.index('inventoryNumber')
     return index.getAll(inventoryNumber)
+  },
+
+  /**
+   * Delete all socles
+   * @returns {Promise<void>}
+   */
+  async deleteAll() {
+    const db = await initDB()
+    const tx = db.transaction(STORES.SOCLES, 'readwrite')
+    await tx.store.clear()
+    await tx.done
+  },
+
+  /**
+   * Insert a socle with a specific ID (for server sync)
+   * @param {Object} socle - Socle data with id
+   * @returns {Promise<void>}
+   */
+  async put(socle) {
+    const db = await initDB()
+    await db.put(STORES.SOCLES, socle)
   }
 }
 

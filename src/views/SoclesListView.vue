@@ -61,7 +61,9 @@
             :key="type"
             :value="type"
           >
-            {{ type }}
+			<span :class="type">
+            	{{ type }}
+			</span>
           </option>
         </select>
         
@@ -70,7 +72,6 @@
           <button @click="viewMode = 'table'" :class="{active: viewMode === 'table'}" class="export-button">Liste</button>
         </div>
 
-        <button @click="exportToCSV" class="export-button">CSV</button>
         <button @click="exportToXLSX" class="export-button">XLSX</button>
       </div>
 
@@ -229,6 +230,22 @@
 
     <!-- Re-open centered container for subsequent content -->
     <div class="container">
+      <div class="cache-management">
+        <button @click="purgeCacheLocal" class="cache-button danger-button">
+          Purger le cache local
+          <span class="warning-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 9v4m0 4h.01M4.93 19h14.14c1.45 0 2.37-1.57 1.64-2.81L13.64 4.19a1.86 1.86 0 0 0-3.28 0L3.29 16.19C2.56 17.43 3.48 19 4.93 19z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </button>
+        <button @click="downloadFromServer" class="cache-button primary-button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Charger depuis le serveur
+        </button>
+      </div>
     </div>
     <AppFooter />
   </div>
@@ -243,6 +260,8 @@ import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
 import QRScanner from '../components/QRScanner.vue'
 import * as XLSX from 'xlsx'
+
+const API_BASE_URL = 'https://socles.ideesculture.fr/gestion/soclesIo/index.php'
 
 export default {
   name: 'SoclesListView',
@@ -518,6 +537,37 @@ export default {
       router.push({ name: 'SocleEdit', params: { id } })
     }
     
+    // Delete socle from server
+    const deleteSocleFromServer = async (inventoryNumber) => {
+      try {
+        const formData = new FormData()
+        formData.append('action', 'deleteSocle')
+        formData.append('inventoryNumber', inventoryNumber)
+
+        const response = await fetch(API_BASE_URL, {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error('Network response was not ok')
+        }
+
+        const result = await response.json()
+
+        if (result.result === true) {
+          console.log('Socle deleted from server successfully:', inventoryNumber)
+          return true
+        } else {
+          console.error('Webservice delete error:', result.message)
+          return false
+        }
+      } catch (error) {
+        console.error('Failed to delete socle from server:', error)
+        return false
+      }
+    }
+
     // Delete socle
     const deleteSocle = async (id) => {
       if (!confirm('Êtes-vous sûr de vouloir supprimer ce socle ?')) {
@@ -525,8 +575,25 @@ export default {
       }
 
       try {
+        // Get socle data before deleting (to get inventory number for server deletion)
+        const socleData = await soclesDB.getById(id)
+        const inventoryNumber = socleData?.inventoryNumber
+
+        // Delete from local database
         await soclesDB.delete(id)
         await loadSocles()
+
+        // Ask if user wants to delete from server too (only if we have an inventory number)
+        if (inventoryNumber && confirm('Voulez-vous également supprimer ce socle du serveur ?')) {
+          const deleteSuccess = await deleteSocleFromServer(inventoryNumber)
+          if (deleteSuccess) {
+            alert('Socle supprimé du serveur avec succès')
+          } else {
+            alert('Le socle a été supprimé localement, mais la suppression sur le serveur a échoué')
+          }
+        } else if (!inventoryNumber && confirm('Voulez-vous également supprimer ce socle du serveur ?')) {
+          alert('Impossible de supprimer du serveur : numéro d\'inventaire manquant')
+        }
       } catch (error) {
         console.error('Error deleting socle:', error)
         alert('Une erreur est survenue lors de la suppression')
@@ -736,6 +803,98 @@ export default {
       }
     }
 
+    // Purge local cache (delete all socles)
+    const purgeCacheLocal = async () => {
+      if (!confirm('Êtes-vous sûr de vouloir purger tous les socles du cache local ?')) {
+        return
+      }
+
+      try {
+        loading.value = true
+        await soclesDB.deleteAll()
+        await loadSocles()
+        alert('Cache local purgé avec succès')
+      } catch (error) {
+        console.error('Error purging cache:', error)
+        alert('Une erreur est survenue lors de la purge du cache')
+      } finally {
+        loading.value = false
+      }
+    }
+
+    // Download from server (replace all socles with server data)
+    const downloadFromServer = async () => {
+      if (!confirm('Êtes-vous sûr de vouloir remplacer toutes les données locales par les données du serveur ?')) {
+        return
+      }
+
+      try {
+        loading.value = true
+
+        // Call webservice to get all socles
+        const formData = new FormData()
+        formData.append('action', 'getAllSocles')
+
+        const response = await fetch(API_BASE_URL, {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error('Network response was not ok')
+        }
+
+        const data = await response.json()
+
+        if (data.result === true && data.socles && Array.isArray(data.socles)) {
+          console.log('Received socles from server:', data.socles.length)
+          console.log('First socle sample:', data.socles[0])
+
+          // Delete all local socles
+          await soclesDB.deleteAll()
+
+          // Insert server socles into local database
+          // Use put() to insert with existing server IDs
+          for (const socleWrapper of data.socles) {
+            // Extract socle data from wrapper object
+            const socle = socleWrapper.data || socleWrapper
+
+            // Ensure the socle has required fields
+            const socleToInsert = {
+              ...socle,
+              createdAt: socle.createdAt || new Date().toISOString(),
+              updatedAt: socle.updatedAt || new Date().toISOString(),
+              photos: socle.photos || [],
+              comments: socle.comments || '',
+              isDraft: socle.isDraft !== undefined ? socle.isDraft : false
+            }
+
+            console.log('Inserting socle with ID:', socleToInsert.id, 'inventoryNumber:', socleToInsert.inventoryNumber)
+
+            // Use put() which inserts/updates with the existing ID from server
+            await soclesDB.put(socleToInsert)
+          }
+
+          // Reload socles
+          await loadSocles()
+
+          console.log('Socles after reload:', socles.value.length)
+          if (socles.value.length > 0) {
+            console.log('First loaded socle:', socles.value[0])
+          }
+
+          alert(`${data.socles.length} socle(s) téléchargé(s) depuis le serveur`)
+        } else {
+          throw new Error(data.message || 'Failed to fetch socles from server')
+        }
+      } catch (error) {
+        console.error('Error downloading from server:', error)
+        alert('Une erreur est survenue lors du téléchargement depuis le serveur')
+      } finally {
+        loading.value = false
+      }
+    }
+
     onMounted(() => {
       loadSocles()
       // start aggressive initialization in case DataTables loads late under Vite HMR
@@ -792,7 +951,9 @@ export default {
       closeQRScanner,
       handleQRScan,
       exportToXLSX,
-      exportToCSV
+      exportToCSV,
+      purgeCacheLocal,
+      downloadFromServer
     }
   }
 }
@@ -1151,5 +1312,84 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   margin-bottom: 2px;
+}
+
+/* Cache management buttons */
+.cache-management {
+  display: flex;
+  gap: var(--spacing-md);
+  margin: var(--spacing-xl) 0;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.cache-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.cache-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.cache-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.danger-button {
+  background: #1f2937;
+  color: white;
+}
+
+.danger-button:hover {
+  background: #111827;
+}
+
+.warning-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f97316;
+  color: white;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+}
+
+.warning-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.primary-button {
+  background: var(--color-primary);
+  color: white;
+}
+
+.primary-button:hover {
+  background: #2563eb;
+}
+
+@media (max-width: 768px) {
+  .cache-management {
+    flex-direction: column;
+  }
+
+  .cache-button {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>

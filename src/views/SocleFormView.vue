@@ -2,12 +2,25 @@
   <div class="socle-form-view">
     <AppHeader @open-qr-scanner="openQRScanner" />
 
+    <!-- Upload notification -->
+    <div v-if="uploadStatus" :class="['upload-notification', uploadStatus]">
+      <span v-if="uploadStatus === 'uploading'">
+        Enregistrement sur le serveur<span class="dots">{{ uploadDots }}</span>
+      </span>
+      <span v-else-if="uploadStatus === 'success'">
+        ✓ Sauvegardé sur le serveur
+      </span>
+      <span v-else-if="uploadStatus === 'error'">
+        ✗ Erreur lors de la sauvegarde sur le serveur
+      </span>
+    </div>
+
     <QRScanner
       v-if="showQRScanner"
       @scan="handleQRScan"
       @close="closeQRScanner"
     />
-    
+
     <div class="container">
       <div class="form-header">
         <button @click="goBack" class="back-button">
@@ -520,6 +533,11 @@ export default {
     const expoIframeSrc = '/expositions/new?embedded=1'
     const showQRScanner = ref(false)
 
+    // Upload status and dots animation
+    const uploadStatus = ref(null) // null, 'uploading', 'success', 'error'
+    const uploadDots = ref('')
+    let dotsInterval = null
+
     // Fullscreen image viewer
     const showFullscreen = ref(false)
     const fullscreenImageUrl = ref('')
@@ -590,7 +608,10 @@ export default {
       if (socleId) {
         isEditing.value = true
         try {
+          console.log('Loading socle with ID:', socleId, 'parsed as:', parseInt(socleId))
           const socle = await soclesDB.getById(parseInt(socleId))
+          console.log('Loaded socle:', socle)
+
           if (socle) {
             // Ensure photos array exists and convert old values
             form.value = {
@@ -603,7 +624,9 @@ export default {
               imageUrl: socle.imageUrl || '',
               imageUrlCaption: socle.imageUrlCaption || ''
             }
+            console.log('Form populated with:', form.value)
           } else {
+            console.error('Socle not found in database for ID:', socleId)
             alert('Socle non trouvé')
             goBack()
           }
@@ -680,6 +703,25 @@ export default {
       }
     }
 
+    // Start dots animation
+    const startDotsAnimation = () => {
+      uploadDots.value = ''
+      let dotCount = 0
+      dotsInterval = setInterval(() => {
+        dotCount = (dotCount + 1) % 4
+        uploadDots.value = '.'.repeat(dotCount)
+      }, 200)
+    }
+
+    // Stop dots animation
+    const stopDotsAnimation = () => {
+      if (dotsInterval) {
+        clearInterval(dotsInterval)
+        dotsInterval = null
+      }
+      uploadDots.value = ''
+    }
+
     const handleSubmit = async () => {
       try {
         // Convert Vue proxy to plain object by serializing and deserializing
@@ -692,14 +734,35 @@ export default {
           savedSocle = await soclesDB.create(plainFormData)
         }
 
-        // Upload to webservice (non-blocking, don't wait for result)
-        uploadSocleToWebService(savedSocle).catch(err => {
-          console.warn('Webservice upload failed but local save succeeded:', err)
-        })
+        // Show uploading status with animated dots
+        uploadStatus.value = 'uploading'
+        startDotsAnimation()
 
-        router.push({ name: 'SoclesList' })
+        // Upload to webservice (blocking, wait for result)
+        const uploadSuccess = await uploadSocleToWebService(savedSocle)
+
+        // Stop dots animation
+        stopDotsAnimation()
+
+        if (uploadSuccess) {
+          uploadStatus.value = 'success'
+          // Wait 1.5 seconds to show success message, then navigate
+          setTimeout(() => {
+            uploadStatus.value = null
+            router.push({ name: 'SoclesList' })
+          }, 1500)
+        } else {
+          uploadStatus.value = 'error'
+          // Wait 3 seconds to show error message, then navigate anyway
+          setTimeout(() => {
+            uploadStatus.value = null
+            router.push({ name: 'SoclesList' })
+          }, 3000)
+        }
       } catch (error) {
         console.error('Error saving socle:', error)
+        stopDotsAnimation()
+        uploadStatus.value = null
         alert('Une erreur est survenue lors de l\'enregistrement')
       }
     }
@@ -860,6 +923,7 @@ export default {
     // Clean up message listener when component unmounts
     onUnmounted(() => {
       try { window.removeEventListener('message', onMessage) } catch (e) { /* ignore */ }
+      stopDotsAnimation()
     })
 
     // Generate QR code locally and produce a PDF containing the QR (link to public URL)
@@ -940,6 +1004,9 @@ export default {
       openQRScanner,
       closeQRScanner,
       handleQRScan,
+      // Upload status
+      uploadStatus,
+      uploadDots,
       // Fullscreen viewer
       showFullscreen,
       fullscreenImageUrl,
@@ -1565,5 +1632,54 @@ input:checked + .slider:before {
     font-size: 32px;
     padding: 8px;
   }
+}
+
+/* Upload notification */
+.upload-notification {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: slideIn 0.3s ease-out;
+  min-width: 250px;
+  text-align: center;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.upload-notification.uploading {
+  background: #3b82f6;
+  color: white;
+}
+
+.upload-notification.success {
+  background: #10b981;
+  color: white;
+}
+
+.upload-notification.error {
+  background: #ef4444;
+  color: white;
+}
+
+.upload-notification .dots {
+  display: inline-block;
+  min-width: 20px;
+  text-align: left;
 }
 </style>
