@@ -8,6 +8,7 @@ import SoclesListView from '../views/SoclesListView.vue'
 import SocleFormView from '../views/SocleFormView.vue'
 import ExpositionsListView from '../views/ExpositionsListView.vue'
 import ExpositionFormView from '../views/ExpositionFormView.vue'
+import LegalNoticeView from '../views/LegalNoticeView.vue'
 
 const routes = [
   {

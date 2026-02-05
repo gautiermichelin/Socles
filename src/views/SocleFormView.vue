@@ -46,6 +46,197 @@
         </div>
         
         <form @submit.prevent="handleSubmit">
+          <!-- Display Tab -->
+          <div v-show="activeTab === 'display'" class="tab-content display-tab">
+            <!-- Photos du socle -->
+            <div v-if="(form.photos && form.photos.length > 0) || form.imageUrl" class="display-photos">
+              <h3 class="photos-section-title">Photos du socle</h3>
+              <div class="display-photos-grid">
+                <div
+                  v-for="(photo, index) in form.photos"
+                  :key="`display-photo-${index}`"
+                  class="display-photo-card"
+                  @click="openFullscreen(photo.url)"
+                >
+                  <img
+                    :src="photo.url"
+                    :alt="photo.caption || `Photo socle ${index + 1}`"
+                    class="display-photo-img"
+                  />
+                  <div v-if="photo.caption" class="display-photo-caption">{{ photo.caption }}</div>
+                </div>
+
+                <div
+                  v-if="form.imageUrl"
+                  class="display-photo-card"
+                  @click="openFullscreen(form.imageUrl)"
+                >
+                  <img
+                    :src="form.imageUrl"
+                    :alt="form.imageUrlCaption || 'Image principale'"
+                    class="display-photo-img"
+                  />
+                  <div v-if="form.imageUrlCaption" class="display-photo-caption">{{ form.imageUrlCaption }}</div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="display-no-photos">
+              <h3 class="photos-section-title">Photos du socle</h3>
+              <p>Aucune photo du socle</p>
+            </div>
+
+            <!-- Photos de l'objet -->
+            <div v-if="form.objectPhotos && form.objectPhotos.length > 0" class="display-photos">
+              <h3 class="photos-section-title">Photos de l'objet</h3>
+              <div class="display-photos-grid">
+                <div
+                  v-for="(photo, index) in form.objectPhotos"
+                  :key="`display-object-photo-${index}`"
+                  class="display-photo-card"
+                  @click="openFullscreen(photo.url)"
+                >
+                  <img
+                    :src="photo.url"
+                    :alt="photo.caption || `Photo objet ${index + 1}`"
+                    class="display-photo-img"
+                  />
+                  <div v-if="photo.caption" class="display-photo-caption">{{ photo.caption }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add photo button -->
+            <button type="button" @click="activeTab = 'photos'" class="display-add-photo-btn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 5v14m-7-7h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              Ajouter des photos
+            </button>
+
+            <!-- Main Information -->
+            <div class="display-section">
+              <h3 class="display-section-title">Informations principales</h3>
+              <div class="display-fields">
+                <div v-if="form.inventoryNumber" class="display-field">
+                  <span class="display-field-label">Numéro inventaire objet</span>
+                  <span class="display-field-value">{{ form.inventoryNumber }}</span>
+                </div>
+                <div v-if="form.objectTitle" class="display-field">
+                  <span class="display-field-label">Titre de l'objet</span>
+                  <span class="display-field-value">{{ form.objectTitle }}</span>
+                </div>
+                <div v-if="form.typography" class="display-field">
+                  <span class="display-field-label">Typologie</span>
+                  <span class="display-field-value">{{ form.typography }}</span>
+                </div>
+                <div v-if="form.expositionNumber" class="display-field">
+                  <span class="display-field-label">Numéro exposition</span>
+                  <span class="display-field-value">{{ form.expositionNumber }}</span>
+                </div>
+                <div v-if="form.exposition" class="display-field">
+                  <span class="display-field-label">Exposition</span>
+                  <span class="display-field-value">{{ form.exposition }}</span>
+                </div>
+                <div v-if="form.function" class="display-field">
+                  <span class="display-field-label">Fonction du socle</span>
+                  <span class="display-field-value">{{ form.function }}</span>
+                </div>
+                <div v-if="form.location" class="display-field">
+                  <span class="display-field-label">Localisation</span>
+                  <span class="display-field-value">{{ form.location }}</span>
+                </div>
+                <div v-if="form.crate" class="display-field">
+                  <span class="display-field-label">Caisse</span>
+                  <span class="display-field-value">{{ form.crate }}</span>
+                </div>
+                <div v-if="form.showcase !== null" class="display-field">
+                  <span class="display-field-label">En vitrine/hors vitrine</span>
+                  <span class="display-field-value">{{ form.showcase ? 'En vitrine' : 'Hors vitrine' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dimensions -->
+            <div v-if="form.heightCm || form.lengthCm || form.widthCm || form.rodDiameterCm" class="display-section">
+              <h3 class="display-section-title">Dimensions du socle</h3>
+              <div class="display-dimensions">
+                <div v-if="form.heightCm" class="display-dimension">
+                  <span class="display-dimension-label">Hauteur</span>
+                  <span class="display-dimension-value">{{ form.heightCm }} cm</span>
+                </div>
+                <div v-if="form.lengthCm" class="display-dimension">
+                  <span class="display-dimension-label">Longueur</span>
+                  <span class="display-dimension-value">{{ form.lengthCm }} cm</span>
+                </div>
+                <div v-if="form.widthCm" class="display-dimension">
+                  <span class="display-dimension-label">Largeur</span>
+                  <span class="display-dimension-value">{{ form.widthCm }} cm</span>
+                </div>
+                <div v-if="form.rodDiameterCm" class="display-dimension">
+                  <span class="display-dimension-label">Diamètre tige</span>
+                  <span class="display-dimension-value">{{ form.rodDiameterCm }} cm</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dimensions with Object -->
+            <div v-if="form.heightWithObjectCm || form.lengthWithObjectCm || form.widthWithObjectCm" class="display-section">
+              <h3 class="display-section-title">Dimensions avec l'objet</h3>
+              <div class="display-dimensions">
+                <div v-if="form.heightWithObjectCm" class="display-dimension">
+                  <span class="display-dimension-label">Hauteur</span>
+                  <span class="display-dimension-value">{{ form.heightWithObjectCm }} cm</span>
+                </div>
+                <div v-if="form.lengthWithObjectCm" class="display-dimension">
+                  <span class="display-dimension-label">Longueur</span>
+                  <span class="display-dimension-value">{{ form.lengthWithObjectCm }} cm</span>
+                </div>
+                <div v-if="form.widthWithObjectCm" class="display-dimension">
+                  <span class="display-dimension-label">Largeur</span>
+                  <span class="display-dimension-value">{{ form.widthWithObjectCm }} cm</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Assembly Instructions -->
+            <div v-if="form.instructions" class="display-section">
+              <h3 class="display-section-title">Instructions de montage</h3>
+              <p class="display-text">{{ form.instructions }}</p>
+            </div>
+
+            <!-- Materials/Colors -->
+            <div v-if="form.materials" class="display-section">
+              <h3 class="display-section-title">Matériaux/couleurs</h3>
+              <p class="display-text">{{ form.materials }}</p>
+            </div>
+
+            <!-- Advanced Information -->
+            <div v-if="form.reserved || form.antiSeismic || form.doNotAdapt || form.numberOfElements || form.adjustableHeight" class="display-section">
+              <h3 class="display-section-title">Informations avancées</h3>
+              <div class="display-tags">
+                <span v-if="form.reserved" class="display-tag">Réservé</span>
+                <span v-if="form.antiSeismic" class="display-tag">Anti-sismique</span>
+                <span v-if="form.doNotAdapt" class="display-tag">Ne pas adapter</span>
+                <span v-if="form.adjustableHeight" class="display-tag">Hauteur réglable</span>
+              </div>
+              <div v-if="form.numberOfElements" class="display-field" style="margin-top: 12px;">
+                <span class="display-field-label">Nb d'éléments composant le socle</span>
+                <span class="display-field-value">{{ form.numberOfElements }}</span>
+              </div>
+            </div>
+
+            <!-- Comments -->
+            <div v-if="form.comments" class="display-section">
+              <h3 class="display-section-title">Commentaires</h3>
+              <p class="display-text">{{ form.comments }}</p>
+            </div>
+
+            <!-- Draft Badge -->
+            <div v-if="form.isDraft" class="display-draft-badge">
+              Brouillon
+            </div>
+          </div>
+
           <!-- Main Fields Tab -->
           <div v-show="activeTab === 'main'" class="tab-content">
             <!-- Draft mode toggle -->
@@ -286,9 +477,11 @@
           
           <!-- Photos Tab -->
           <div v-show="activeTab === 'photos'" class="tab-content">
+            <!-- Photos du socle -->
             <div class="photos-section">
+              <h3 class="photos-section-title">Photos du socle</h3>
               <div class="form-group">
-                <label for="photoUpload">Ajouter des photos</label>
+                <label for="photoUpload">Ajouter des photos du socle</label>
                 <input
                   id="photoUpload"
                   type="file"
@@ -301,7 +494,6 @@
               </div>
 
               <div v-if="(form.photos && form.photos.length > 0) || form.imageUrl" class="photos-grid">
-                <!-- Render uploaded photos first -->
                 <div
                   v-for="(photo, index) in form.photos"
                   :key="`photo-${index}`"
@@ -309,7 +501,7 @@
                 >
                   <img
                     :src="photo.url"
-                    :alt="`Photo ${index + 1}`"
+                    :alt="`Photo socle ${index + 1}`"
                     class="photo-preview"
                     @click="openFullscreen(photo.url)"
                     style="cursor: pointer;"
@@ -336,7 +528,6 @@
                   </div>
                 </div>
 
-                <!-- If there is a legacy single imageUrl, show it as a card too -->
                 <div v-if="form.imageUrl" class="photo-card image-url-card">
                   <img
                     :src="form.imageUrl"
@@ -379,7 +570,64 @@
               </div>
 
               <div v-else class="empty-photos">
-                <p>Aucune photo ajoutée pour ce socle</p>
+                <p>Aucune photo du socle</p>
+              </div>
+            </div>
+
+            <!-- Photos de l'objet -->
+            <div class="photos-section" style="margin-top: var(--spacing-xl);">
+              <h3 class="photos-section-title">Photos de l'objet</h3>
+              <div class="form-group">
+                <label for="objectPhotoUpload">Ajouter des photos de l'objet</label>
+                <input
+                  id="objectPhotoUpload"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  @change="handleObjectPhotoUpload"
+                  class="photo-input"
+                />
+                <p class="help-text">Vous pouvez sélectionner plusieurs photos à la fois</p>
+              </div>
+
+              <div v-if="form.objectPhotos && form.objectPhotos.length > 0" class="photos-grid">
+                <div
+                  v-for="(photo, index) in form.objectPhotos"
+                  :key="`object-photo-${index}`"
+                  class="photo-card"
+                >
+                  <img
+                    :src="photo.url"
+                    :alt="`Photo objet ${index + 1}`"
+                    class="photo-preview"
+                    @click="openFullscreen(photo.url)"
+                    style="cursor: pointer;"
+                  />
+                  <div class="photo-overlay">
+                    <button
+                      type="button"
+                      @click="removeObjectPhoto(index)"
+                      class="remove-photo-btn"
+                      title="Supprimer cette photo"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="photo-info">
+                    <input
+                      v-model="photo.caption"
+                      type="text"
+                      placeholder="Légende de la photo"
+                      class="photo-caption"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div v-else class="empty-photos">
+                <p>Aucune photo de l'objet</p>
               </div>
             </div>
           </div>
@@ -527,7 +775,7 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const isEditing = ref(false)
-    const activeTab = ref('main')
+    const activeTab = ref('display')
     const availableExpositions = ref([])
     const showExpoModal = ref(false)
     const expoIframeSrc = '/expositions/new?embedded=1'
@@ -548,6 +796,7 @@ export default {
     const zoomStep = 0.2
 
     const tabs = [
+      { id: 'display', label: 'Affichage' },
       { id: 'main', label: 'Champs principaux' },
       { id: 'photos', label: 'Photos' },
       { id: 'advanced', label: 'Informations avancées' }
@@ -580,6 +829,7 @@ export default {
       adjustableHeight: false,
       comments: '',
       photos: [],
+      objectPhotos: [],
       // legacy single image field (demo data uses imageUrl) and optional caption
       imageUrl: '',
       imageUrlCaption: ''
@@ -617,6 +867,7 @@ export default {
             form.value = {
               ...socle,
               photos: socle.photos || [],
+              objectPhotos: socle.objectPhotos || [],
               reserved: !!socle.reserved,
               antiSeismic: !!socle.antiSeismic,
               doNotAdapt: !!socle.doNotAdapt,
@@ -814,6 +1065,34 @@ export default {
       form.value.imageUrlCaption = ''
     }
 
+    // Handle object photo upload
+    const handleObjectPhotoUpload = (event) => {
+      const files = event.target.files
+      if (!files || files.length === 0) return
+
+      Array.from(files).forEach(file => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          form.value.objectPhotos.push({
+            url: e.target.result,
+            caption: '',
+            uploadedAt: new Date().toISOString()
+          })
+        }
+        reader.readAsDataURL(file)
+      })
+
+      event.target.value = ''
+    }
+
+    // Remove an object photo
+    const removeObjectPhoto = (index) => {
+      if (!confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) return
+      if (typeof index === 'number' && form.value.objectPhotos && form.value.objectPhotos.length > index) {
+        form.value.objectPhotos.splice(index, 1)
+      }
+    }
+
     // Fullscreen image viewer functions
     const openFullscreen = (imageUrl) => {
       fullscreenImageUrl.value = imageUrl
@@ -944,15 +1223,11 @@ export default {
         // Generate dataURL for QR locally
         const dataUrl = await QRCode.toDataURL(targetUrl, { width: 400, margin: 1 })
 
-        // Create PDF: A4 portrait, place title and centered QR
+        // Create PDF: A4 portrait
         const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
         const pageW = pdf.internal.pageSize.getWidth()
 
-        // Title
-        pdf.setFontSize(16)
-        pdf.text(`Socle ${inv}`, pageW / 2, 30, { align: 'center' })
-
-        // Image sizing: target width 80mm
+        // Image sizing: target width 80mm (square QR)
         const imgTargetWidth = 80
         let imgTargetHeight = imgTargetWidth
         try {
@@ -965,13 +1240,66 @@ export default {
           // ignore
         }
 
-        const x = (pageW - imgTargetWidth) / 2
-        const y = 40
-        pdf.addImage(dataUrl, 'PNG', x, y, imgTargetWidth, imgTargetHeight)
+        // Check if we have an object photo to display alongside the QR
+        const objectPhotoUrl = (form.value.objectPhotos && form.value.objectPhotos.length > 0)
+          ? form.value.objectPhotos[0].url
+          : null
 
-        // Add the target URL below the QR
+        // Compute left X position (same for text and images)
+        let xLeft
+        if (objectPhotoUrl) {
+          const gap = 10
+          const totalWidth = imgTargetWidth * 2 + gap
+          xLeft = (pageW - totalWidth) / 2
+        } else {
+          xLeft = (pageW - imgTargetWidth) / 2
+        }
+
+        // Inventory number above QR, left-aligned
+        pdf.setFontSize(16)
+        pdf.text(inv, xLeft, 28)
+
+        const y = 34
+
+        if (objectPhotoUrl) {
+          // Side by side layout: QR left, object photo right
+          const gap = 10
+          const xPhoto = xLeft + imgTargetWidth + gap
+
+          pdf.addImage(dataUrl, 'PNG', xLeft, y, imgTargetWidth, imgTargetHeight)
+
+          // Fit object photo into square (white letterbox/pillarbox), same size as QR
+          try {
+            const fittedDataUrl = await new Promise((resolve, reject) => {
+              const img = new Image()
+              img.onload = () => {
+                const size = Math.max(img.width, img.height)
+                const canvas = document.createElement('canvas')
+                canvas.width = size
+                canvas.height = size
+                const ctx = canvas.getContext('2d')
+                ctx.fillStyle = '#ffffff'
+                ctx.fillRect(0, 0, size, size)
+                const dx = (size - img.width) / 2
+                const dy = (size - img.height) / 2
+                ctx.drawImage(img, dx, dy)
+                resolve(canvas.toDataURL('image/jpeg', 0.9))
+              }
+              img.onerror = reject
+              img.src = objectPhotoUrl
+            })
+            pdf.addImage(fittedDataUrl, 'JPEG', xPhoto, y, imgTargetWidth, imgTargetHeight)
+          } catch (e) {
+            console.warn('Could not add object photo to PDF:', e)
+          }
+        } else {
+          // No object photo: QR code only
+          pdf.addImage(dataUrl, 'PNG', xLeft, y, imgTargetWidth, imgTargetHeight)
+        }
+
+        // URL below QR, left-aligned
         pdf.setFontSize(10)
-        pdf.text(targetUrl, pageW / 2, y + imgTargetHeight + 12, { align: 'center' })
+        pdf.text(targetUrl, xLeft, y + imgTargetHeight + 8)
 
         pdf.save(`socle_qr_${inv}.pdf`)
       } catch (err) {
@@ -999,8 +1327,10 @@ export default {
       handleSubmit,
       goBack,
       handlePhotoUpload,
+      handleObjectPhotoUpload,
       removePhoto,
       removeMainImage,
+      removeObjectPhoto,
       openQRScanner,
       closeQRScanner,
       handleQRScan,
@@ -1410,6 +1740,15 @@ input:checked + .slider:before {
   border: none;
 }
 
+.photos-section-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-md) 0;
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--color-border);
+}
+
 .empty-photos {
   text-align: center;
   padding: var(--spacing-xl);
@@ -1681,5 +2020,208 @@ input:checked + .slider:before {
   display: inline-block;
   min-width: 20px;
   text-align: left;
+}
+
+/* Display Tab Styles */
+.display-tab {
+  background: #f8fafc;
+  position: relative;
+}
+
+.display-photos {
+  margin-bottom: var(--spacing-xl);
+}
+
+.display-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+.display-photo-card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: white;
+}
+
+.display-photo-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.display-photo-img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.display-photo-caption {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: white;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.display-no-photos {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
+  background: white;
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.display-add-photo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+  margin-top: var(--spacing-md);
+}
+
+.display-add-photo-btn:hover {
+  background: #2563eb;
+}
+
+.display-section {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.display-section-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-md) 0;
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.display-fields {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.display-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.display-field-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.display-field-value {
+  font-size: 1rem;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.display-dimensions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.display-dimension {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: #f8fafc;
+  border-radius: var(--radius-md);
+  border: 2px solid #e5e7eb;
+}
+
+.display-dimension-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.display-dimension-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.display-text {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--color-text);
+  white-space: pre-wrap;
+}
+
+.display-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.display-tag {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-primary);
+  color: white;
+  border-radius: 50px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.display-draft-badge {
+  display: inline-block;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: #f59e0b;
+  color: white;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  margin-bottom: var(--spacing-lg);
+}
+
+@media (max-width: 768px) {
+  .display-photos-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .display-photo-img {
+    height: 150px;
+  }
+
+  .display-dimensions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .display-dimension-value {
+    font-size: 1.25rem;
+  }
 }
 </style>

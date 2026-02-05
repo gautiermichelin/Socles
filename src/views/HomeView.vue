@@ -54,7 +54,8 @@
               class="socle-card"
               @click="viewSocle(socle)"
             >
-              <img :src="socle.imageUrl" :alt="socle.inventoryNumber" />
+              <img v-if="socle.imageUrl" :src="socle.imageUrl" :alt="socle.inventoryNumber" />
+              <div v-else class="socle-placeholder"></div>
             </div>
           </div>
           <button @click="nextSocle" class="carousel-btn" :disabled="socleIndex >= recentSocles.length - 3">
@@ -83,7 +84,10 @@
             @click="viewExpo(expo)"
           >
             <div class="expo-image-container">
-              <img :src="expo.imageUrl" :alt="expo.shortTitle" class="expo-image" />
+              <img v-if="expo.imageUrl" :src="expo.imageUrl" :alt="expo.shortTitle" class="expo-image" />
+              <div v-else class="expo-placeholder" :style="{ backgroundColor: expo.color || '#3b82f6' }">
+                {{ expo.shortTitle.charAt(0).toUpperCase() }}
+              </div>
               <div class="expo-footer" :style="{ backgroundColor: getColorWithOpacity(expo.color) }">
                 <span class="expo-title" :style="{ color: expo.color === '#ffffff' ? '#000000' : '#ffffff' }">{{ expo.shortTitle }}</span>
                 <button class="expo-arrow" :style="{ color: expo.color === '#ffffff' ? '#000000' : '#ffffff' }">→</button>
@@ -500,6 +504,12 @@ export default {
   object-fit: cover;
 }
 
+.socle-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #ddd14a 0%, #fbee74 100%);
+}
+
 /* Caisse Section */
 .caisse-section {
   background: #e5e7eb;
@@ -537,6 +547,18 @@ export default {
   height: 400px;
   object-fit: cover;
   display: block;
+}
+
+.expo-placeholder {
+  width: 100%;
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.1);
+  filter: blur(2px);
 }
 
 .expo-footer {

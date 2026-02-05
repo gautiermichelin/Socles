@@ -75,6 +75,113 @@
         <button @click="exportToXLSX" class="export-button">XLSX</button>
       </div>
 
+      <!-- SearchPanes filters -->
+      <div v-show="showFilters" class="search-panes-section">
+        <button @click="showSearchPanes = !showSearchPanes" class="search-panes-toggle">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Filtres avancés
+          <span v-if="hasActivePaneFilters" class="pane-filter-badge">{{ filterCrate.length + filterReserved.length + filterAntiSeismic.length + filterDoNotAdapt.length + filterShowcase.length }}</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" :style="{ transform: showSearchPanes ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }">
+            <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div v-show="showSearchPanes" class="search-panes-container">
+          <div class="search-panes-grid">
+            <!-- Caisse -->
+            <div class="search-pane">
+              <div class="search-pane-header">Caisse</div>
+              <div class="search-pane-items">
+                <div
+                  v-for="[value, count] in paneValues.crate"
+                  :key="'crate-' + value"
+                  class="search-pane-item"
+                  :class="{ selected: filterCrate.includes(value) }"
+                  @click="togglePaneFilter('crate', value)"
+                >
+                  <span class="pane-item-label">{{ value }}</span>
+                  <span class="pane-item-count">{{ count }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Réservé -->
+            <div class="search-pane">
+              <div class="search-pane-header">Réservé</div>
+              <div class="search-pane-items">
+                <div
+                  v-for="[value, count] in paneValues.reserved"
+                  :key="'reserved-' + value"
+                  class="search-pane-item"
+                  :class="{ selected: filterReserved.includes(value) }"
+                  @click="togglePaneFilter('reserved', value)"
+                >
+                  <span class="pane-item-label">{{ value }}</span>
+                  <span class="pane-item-count">{{ count }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Anti-sismique -->
+            <div class="search-pane">
+              <div class="search-pane-header">Anti-sismique</div>
+              <div class="search-pane-items">
+                <div
+                  v-for="[value, count] in paneValues.antiSeismic"
+                  :key="'anti-' + value"
+                  class="search-pane-item"
+                  :class="{ selected: filterAntiSeismic.includes(value) }"
+                  @click="togglePaneFilter('antiSeismic', value)"
+                >
+                  <span class="pane-item-label">{{ value }}</span>
+                  <span class="pane-item-count">{{ count }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ne pas adapter -->
+            <div class="search-pane">
+              <div class="search-pane-header">Ne pas adapter</div>
+              <div class="search-pane-items">
+                <div
+                  v-for="[value, count] in paneValues.doNotAdapt"
+                  :key="'adapt-' + value"
+                  class="search-pane-item"
+                  :class="{ selected: filterDoNotAdapt.includes(value) }"
+                  @click="togglePaneFilter('doNotAdapt', value)"
+                >
+                  <span class="pane-item-label">{{ value }}</span>
+                  <span class="pane-item-count">{{ count }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- En vitrine / hors vitrine -->
+            <div class="search-pane">
+              <div class="search-pane-header">Vitrine</div>
+              <div class="search-pane-items">
+                <div
+                  v-for="[value, count] in paneValues.showcase"
+                  :key="'showcase-' + value"
+                  class="search-pane-item"
+                  :class="{ selected: filterShowcase.includes(value) }"
+                  @click="togglePaneFilter('showcase', value)"
+                >
+                  <span class="pane-item-label">{{ value }}</span>
+                  <span class="pane-item-count">{{ count }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button v-if="hasActivePaneFilters" @click="clearAllPaneFilters" class="clear-pane-filters-btn">
+            Effacer tous les filtres
+          </button>
+        </div>
+      </div>
+
       <div v-if="loading" class="loading">
         Chargement...
       </div>
@@ -154,7 +261,10 @@
           <table ref="tableRef" class="display" style="width:100%">
           <thead>
             <tr>
-              <th>Numéro d'exposition</th>
+              <th>
+                <input type="checkbox" @change="toggleSelectAll" :checked="isAllSelected" />
+              </th>
+              <th>N° expo</th>
               <th>N°INV objet</th>
               <th>Image socle</th>
               <th>Hauteur (cm)</th>
@@ -176,6 +286,9 @@
           </thead>
           <tbody>
             <tr v-for="socle in filteredSocles" :key="socle.id">
+              <td>
+                <input type="checkbox" :checked="selectedSocles.has(socle.id)" @change="toggleSelectSocle(socle.id)" />
+              </td>
               <td>{{ socle.expositionNumber || '' }}</td>
               <td>{{ socle.inventoryNumber || '' }}</td>
               <td>
@@ -232,12 +345,12 @@
     <div class="container">
       <div class="cache-management">
         <button @click="purgeCacheLocal" class="cache-button danger-button">
-          Purger le cache local
           <span class="warning-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 9v4m0 4h.01M4.93 19h14.14c1.45 0 2.37-1.57 1.64-2.81L13.64 4.19a1.86 1.86 0 0 0-3.28 0L3.29 16.19C2.56 17.43 3.48 19 4.93 19z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </span>
+          Purger le cache local
         </button>
         <button @click="downloadFromServer" class="cache-button primary-button">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -245,6 +358,20 @@
           </svg>
           Charger depuis le serveur
         </button>
+        <a href="https://ideesculture.notion.site/Mus-e-du-Quai-Branly-application-socle-2ea310f7cc24803390ddc3f4be6e55ed" target="_blank" rel="noopener noreferrer" class="cache-button primary-button" style="text-decoration:none;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Documentation
+        </a>
+        <a href="https://socles.ideesculture.fr/gestion" target="_blank" rel="noopener noreferrer" class="cache-button primary-button" style="text-decoration:none;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Administration
+        </a>
       </div>
     </div>
     <AppFooter />
@@ -284,7 +411,16 @@ export default {
     const loading = ref(true)
     const showQRScanner = ref(false)
     const showFilters = ref(true) // Show filters by default on desktop, will be hidden on mobile
-    
+    const showSearchPanes = ref(false)
+    const selectedSocles = ref(new Set())
+
+    // SearchPanes filter selections (arrays for Vue reactivity)
+    const filterCrate = ref([])
+    const filterReserved = ref([])
+    const filterAntiSeismic = ref([])
+    const filterDoNotAdapt = ref([])
+    const filterShowcase = ref([])
+
 
     // Load socles from database
     const loadSocles = async () => {
@@ -323,7 +459,88 @@ export default {
       return Array.from(types).sort()
     })
 
-    // Filter socles based on search query and selected exposition
+    // SearchPanes: compute distinct values with counts for each filter column
+    const paneValues = computed(() => {
+      // Base set: apply search, exposition & typologie filters but NOT searchpane filters
+      let base = socles.value
+
+      if (selectedExposition.value) {
+        base = base.filter(s => s.exposition === selectedExposition.value)
+      }
+      if (selectedTypologie.value) {
+        base = base.filter(s => s.typography === selectedTypologie.value)
+      }
+      if (searchQuery.value) {
+        const q = searchQuery.value.toLowerCase()
+        base = base.filter(s =>
+          (s.inventoryNumber && s.inventoryNumber.toLowerCase().includes(q)) ||
+          (s.exposition && s.exposition.toLowerCase().includes(q)) ||
+          (s.typography && s.typography.toLowerCase().includes(q)) ||
+          (s.location && s.location.toLowerCase().includes(q))
+        )
+      }
+
+      const count = (arr, fn) => {
+        const map = new Map()
+        arr.forEach(s => {
+          const val = fn(s)
+          map.set(val, (map.get(val) || 0) + 1)
+        })
+        return Array.from(map.entries()).sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+      }
+
+      return {
+        crate: count(base, s => s.crate || '(vide)'),
+        reserved: count(base, s => s.reserved ? 'Oui' : 'Non'),
+        antiSeismic: count(base, s => s.antiSeismic ? 'Oui' : 'Non'),
+        doNotAdapt: count(base, s => s.doNotAdapt ? 'Oui' : 'Non'),
+        showcase: count(base, s => s.showcase === true ? 'En vitrine' : s.showcase === false ? 'Hors vitrine' : '-')
+      }
+    })
+
+    // Toggle a value in a SearchPane filter set
+    const paneFilterRefs = {
+      crate: filterCrate,
+      reserved: filterReserved,
+      antiSeismic: filterAntiSeismic,
+      doNotAdapt: filterDoNotAdapt,
+      showcase: filterShowcase
+    }
+
+    const togglePaneFilter = (filterName, value) => {
+      console.log('togglePaneFilter called:', filterName, value)
+      const filterRef = paneFilterRefs[filterName]
+      if (!filterRef) {
+        console.error('No filterRef for', filterName)
+        return
+      }
+      console.log('Before:', JSON.stringify(filterRef.value))
+      const idx = filterRef.value.indexOf(value)
+      if (idx >= 0) {
+        filterRef.value = filterRef.value.filter((_, i) => i !== idx)
+      } else {
+        filterRef.value = [...filterRef.value, value]
+      }
+      console.log('After:', JSON.stringify(filterRef.value))
+    }
+
+    const clearAllPaneFilters = () => {
+      filterCrate.value = []
+      filterReserved.value = []
+      filterAntiSeismic.value = []
+      filterDoNotAdapt.value = []
+      filterShowcase.value = []
+    }
+
+    const hasActivePaneFilters = computed(() => {
+      return filterCrate.value.length > 0 ||
+        filterReserved.value.length > 0 ||
+        filterAntiSeismic.value.length > 0 ||
+        filterDoNotAdapt.value.length > 0 ||
+        filterShowcase.value.length > 0
+    })
+
+    // Filter socles based on search query, selected exposition and searchpane filters
     const filteredSocles = computed(() => {
       let filtered = socles.value
 
@@ -350,6 +567,25 @@ export default {
           (socle.typography && socle.typography.toLowerCase().includes(query)) ||
           (socle.location && socle.location.toLowerCase().includes(query))
         )
+      }
+
+      // SearchPane filters
+      if (filterCrate.value.length > 0) {
+        filtered = filtered.filter(s => filterCrate.value.includes(s.crate || '(vide)'))
+      }
+      if (filterReserved.value.length > 0) {
+        filtered = filtered.filter(s => filterReserved.value.includes(s.reserved ? 'Oui' : 'Non'))
+      }
+      if (filterAntiSeismic.value.length > 0) {
+        filtered = filtered.filter(s => filterAntiSeismic.value.includes(s.antiSeismic ? 'Oui' : 'Non'))
+      }
+      if (filterDoNotAdapt.value.length > 0) {
+        filtered = filtered.filter(s => filterDoNotAdapt.value.includes(s.doNotAdapt ? 'Oui' : 'Non'))
+      }
+      if (filterShowcase.value.length > 0) {
+        filtered = filtered.filter(s => filterShowcase.value.includes(
+          s.showcase === true ? 'En vitrine' : s.showcase === false ? 'Hors vitrine' : '-'
+        ))
       }
 
       return filtered
@@ -423,13 +659,14 @@ export default {
 
         if ($ && $.fn && $.fn.dataTable && tableEl) {
           try {
-            // destroy existing instance if any
+            // destroy existing instance if any (keep DOM so Vue can manage it)
             if (dataTableInstance) {
-              try { dataTableInstance.destroy(true) } catch (e) { console.warn(e) }
+              try { dataTableInstance.destroy(false) } catch (e) { console.warn(e) }
               dataTableInstance = null
             }
 
-            // small pause to let layout settle
+            // wait for Vue to re-render rows after destroy, then let layout settle
+            await nextTick()
             await new Promise(res => setTimeout(res, 20))
 
             console.debug('initDataTable: initializing DataTable on attempt', attempt)
@@ -508,10 +745,10 @@ export default {
       }
     })
 
-    watch(filteredSocles, (nv) => {
-      // if table view is active, reinit to reflect rows
+    watch(filteredSocles, async () => {
+      // if table view is active, reinit after Vue has re-rendered the rows
       if (viewMode.value === 'table') {
-        // re-init after DOM update
+        await nextTick()
         initDataTable()
       }
     })
@@ -599,6 +836,30 @@ export default {
         alert('Une erreur est survenue lors de la suppression')
       }
     }
+
+    // Selection functions
+    const toggleSelectSocle = (socleId) => {
+      if (selectedSocles.value.has(socleId)) {
+        selectedSocles.value.delete(socleId)
+      } else {
+        selectedSocles.value.add(socleId)
+      }
+      // Trigger reactivity
+      selectedSocles.value = new Set(selectedSocles.value)
+    }
+
+    const toggleSelectAll = (event) => {
+      if (event.target.checked) {
+        selectedSocles.value = new Set(filteredSocles.value.map(socle => socle.id))
+      } else {
+        selectedSocles.value = new Set()
+      }
+    }
+
+    const isAllSelected = computed(() => {
+      return filteredSocles.value.length > 0 &&
+             filteredSocles.value.every(socle => selectedSocles.value.has(socle.id))
+    })
 
     // Get typology color for badge
     const getTypologyColor = (typography) => {
@@ -953,7 +1214,21 @@ export default {
       exportToXLSX,
       exportToCSV,
       purgeCacheLocal,
-      downloadFromServer
+      downloadFromServer,
+      selectedSocles,
+      toggleSelectSocle,
+      toggleSelectAll,
+      isAllSelected,
+      showSearchPanes,
+      filterCrate,
+      filterReserved,
+      filterAntiSeismic,
+      filterDoNotAdapt,
+      filterShowcase,
+      paneValues,
+      togglePaneFilter,
+      clearAllPaneFilters,
+      hasActivePaneFilters
     }
   }
 }
@@ -1245,6 +1520,13 @@ export default {
 .table-full-width {
   padding: 12px 20px;
   background: #ffffff;
+  max-width: 100vw;
+  overflow-x: auto;
+}
+
+.dt-container {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 /* Icon buttons in table actions */
@@ -1380,6 +1662,145 @@ export default {
 
 .primary-button:hover {
   background: #2563eb;
+}
+
+/* SearchPanes */
+.search-panes-section {
+  margin-bottom: var(--spacing-lg);
+}
+
+.search-panes-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+
+.search-panes-toggle:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.pane-filter-badge {
+  background: #ef4444;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.search-panes-container {
+  margin-top: var(--spacing-md);
+}
+
+.search-panes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.search-pane {
+  background: white;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.search-pane-header {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  background: #f3f4f6;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.search-pane-items {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.search-pane-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px var(--spacing-md);
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.search-pane-item:hover {
+  background: #f0f4ff;
+}
+
+.search-pane-item.selected {
+  background: #dbeafe;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.pane-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  margin-right: var(--spacing-sm);
+}
+
+.pane-item-count {
+  background: #e5e7eb;
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.search-pane-item.selected .pane-item-count {
+  background: var(--color-primary);
+  color: white;
+}
+
+.clear-pane-filters-btn {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.clear-pane-filters-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 768px) {
+  .search-panes-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-panes-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
